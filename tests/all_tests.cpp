@@ -24,6 +24,8 @@
 #include "nam/constants.hpp"
 #include "nam/memo.hpp"
 #include "nam/number.hpp"
+#include "nam/expr.hpp"
+#include "nam/jit.hpp"
 
 using namespace nam;
 
@@ -649,6 +651,113 @@ NAM_TEST(user_to_string_render)
     // Hex render of 1/2 = 0.8 in base 16.
     Number half = Number::rational(1, 2, 16);
     CHECK(half.to_string(2) == "0.80");
+}
+
+// ========================= PHASE 4: JIT / EXPR TREE =========================
+// The compile(expr_tree) -> NumVMFn primitive. The returned function pointer
+// has the SAME C ABI as the static path, so it must reproduce the static
+// digit stream EXACTLY (fork/value semantics are unchanged at the ABI line).
+NAM_TEST(jit_rational_matches_static)
+{
+    // Build 1/7 base 10 as a runtime expression tree and compile it.
+    auto e = Expr::leaf_rational(1, 7, 10);
+    CompiledFn cf = compile(*e);
+    AutomatonVM ref = make_rational(1, 7, 10);
+    AutomatonVM jit = make_rational(1, 7, 10);
+    const uint32_t expect[] = {1, 4, 2, 8, 5, 7, 1, 4, 2, 8, 5, 7};
+    for (uint32_t ex : expect)
+    {
+        NumVMStep rj = cf.step(jit);
+        NumVMStep rr = Rational::step(ref);
+        CHECK(rj.digit == ex);
+        CHECK(rj.digit == rr.digit); // exact agreement with static path
+        jit = rj.next;
+        ref = rr.next;
+    }
+}
+
+NAM_TEST(jit_sqrt_matches_static)
+{
+    auto e = Expr::leaf_sqrt(2, 10);
+    CompiledFn cf = compile(*e);
+    AutomatonVM jit = make_sqrt(2, 10);
+    const uint32_t expect[] = {4, 1, 4, 2, 1, 3, 5, 6, 2, 3, 7};
+    for (uint32_t ex : expect)
+    {
+        NumVMStep rj = cf.step(jit);
+        CHECK(rj.digit == ex);
+        jit = rj.next;
+    }
+}
+
+NAM_TEST(jit_padic_matches_static)
+{
+    auto e = Expr::leaf_padic(-1, 1, 5); // -1 in Z_5 = ...4444
+    CompiledFn cf = compile(*e);
+    AutomatonVM jit = make_padic(-1, 1, 5);
+    for (int i = 0; i < 10; ++i)
+    {
+        NumVMStep rj = cf.step(jit);
+        CHECK(rj.digit == 4);
+        jit = rj.next;
+    }
+}
+
+NAM_TEST(jit_rebase_codec_node)
+{
+    // Runtime-built codec node: 1/4 base 10 rebased to base 2 -> 0.0100...
+    auto e = Expr::rebase(Expr::leaf_rational(1, 4, 10), 2);
+    CompiledFn cf = compile(*e);
+    // The resolved seed must be the analytic rational-in-base reprojection.
+    ResolvedGen rg = resolve_expr(*e);
+    AutomatonVM jit = rg.seed;
+    CHECK(jit.base == 2);
+    const uint32_t expect[] = {0, 1, 0, 0};
+    for (uint32_t ex : expect)
+    {
+        NumVMStep rj = cf.step(jit);
+        CHECK(rj.digit == ex);
+        jit = rj.next;
+    }
+}
+
+NAM_TEST(jit_feeds_existing_combinators)
+{
+    // A compiled NumVMFn is a first-class generator: drive `take` over it,
+    // and confirm the resolved seed flows through the static comparator.
+    auto ea = Expr::leaf_rational(1, 7, 10);
+    auto eb = Expr::leaf_rational(1, 3, 10);
+    ResolvedGen ra = resolve_expr(*ea);
+    ResolvedGen rb = resolve_expr(*eb);
+    // 1/7 < 1/3 -- the static comparator consumes the seeds unchanged.
+    auto lt = definitely_less_than<Rational>(ra.seed, rb.seed, 5);
+    CHECK(lt.has_value());
+    CHECK(*lt == true);
+    // Compile + buffer 12 digits via the raw ABI fn.
+    CompiledFn cf = compile(*ea);
+    std::vector<uint32_t> got;
+    AutomatonVM s = ra.seed;
+    for (int i = 0; i < 12; ++i)
+    {
+        NumVMStep r = cf.step(s);
+        got.push_back(r.digit);
+        s = r.next;
+    }
+    CHECK(got == (std::vector<uint32_t>{1, 4, 2, 8, 5, 7, 1, 4, 2, 8, 5, 7}));
+}
+
+NAM_TEST(jit_multiple_compiles_are_independent)
+{
+    // Two live compiled fns over different generators must not collide
+    // (interpreter trampoline slots are independent; JIT modules are too).
+    CompiledFn a = compile(*Expr::leaf_rational(1, 7, 10));
+    CompiledFn b = compile(*Expr::leaf_rational(3, 8, 10));
+    AutomatonVM sa = make_rational(1, 7, 10);
+    AutomatonVM sb = make_rational(3, 8, 10);
+    NumVMStep ra = a.step(sa);
+    NumVMStep rb = b.step(sb);
+    CHECK(ra.digit == 1); // 1/7 -> 1...
+    CHECK(rb.digit == 3); // 3/8 -> 3...
 }
 
 

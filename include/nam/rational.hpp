@@ -32,6 +32,13 @@ namespace nam
         {
             uint64_t q = s.state[1];
             uint64_t r = s.state[0];
+            if (q == 0)
+            {
+                // Terminating / degenerate denominator: emit zeros.
+                AutomatonVM next = s;
+                next.phase = s.phase + 1;
+                return NumVMStep{0u, next};
+            }
             // r * base then split.
             // r < q <= ~2^32 for sane inputs; base small => fits in 64 bits.
             uint64_t scaled = r * static_cast<uint64_t>(s.base);

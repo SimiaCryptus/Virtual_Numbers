@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(numbers_as_machines CXX)
+project(numbers_as_machines C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,6 +30,22 @@ if(NAM_USE_LLVM_APINT)
     target_include_directories(nam INTERFACE ${LLVM_INCLUDE_DIRS})
     target_compile_definitions(nam INTERFACE NAM_USE_LLVM_APINT=1)
 endif()
+# Phase 4: the JIT compilation path. compile(expr_tree) -> NumVMFn. Off by
+# default so the core library still builds with zero external dependencies
+# (it falls back to a function-pointer interpreter that honors the same C
+# ABI). Enable to emit a single specialized NumVMFn via LLVM ORC v2.
+option(NAM_USE_LLVM_JIT "Use LLVM ORC v2 JIT for compile(expr_tree)" OFF)
+if(NAM_USE_LLVM_JIT)
+    find_package(LLVM CONFIG REQUIRED)
+    message(STATUS "NAM JIT: using LLVM ${LLVM_PACKAGE_VERSION}")
+    target_include_directories(nam INTERFACE ${LLVM_INCLUDE_DIRS})
+    target_compile_definitions(nam INTERFACE ${LLVM_DEFINITIONS})
+    target_compile_definitions(nam INTERFACE NAM_USE_LLVM_JIT=1)
+    llvm_map_components_to_libnames(NAM_LLVM_LIBS
+        core orcjit native support irreader)
+    target_link_libraries(nam INTERFACE ${NAM_LLVM_LIBS})
+endif()
+
 if(NAM_USE_GMP)
      find_package(PkgConfig REQUIRED)
      pkg_check_modules(GMP REQUIRED gmp)
