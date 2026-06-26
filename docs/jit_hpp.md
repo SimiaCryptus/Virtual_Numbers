@@ -133,11 +133,11 @@ pattern.
 A move-only handle (copy is deleted, following the *Rule of Five* for a
 resource-owning type) that bundles:
 
-| Member        | Purpose                                              |
-|---------------|------------------------------------------------------|
-| `fn_`         | The C-ABI `NumVMFn` step function.                   |
-| `native_`     | `true` iff produced by the real LLVM JIT.            |
-| `backend_`    | Opaque `shared_ptr<void>` owning backend resources.  |
+| Member     | Purpose                                             |
+|------------|-----------------------------------------------------|
+| `fn_`      | The C-ABI `NumVMFn` step function.                  |
+| `native_`  | `true` iff produced by the real LLVM JIT.           |
+| `backend_` | Opaque `shared_ptr<void>` owning backend resources. |
 
 Public surface:
 

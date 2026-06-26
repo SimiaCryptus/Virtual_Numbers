@@ -111,18 +111,18 @@ underpin the division loop and mirror the bit-vector accessors found in
 
 ## Interface Summary
 
-| Member                       | Description                                              |
-|------------------------------|---------------------------------------------------------|
-| `BoundedInt()`               | Zero-initialised value.                                  |
-| `BoundedInt(uint64_t v)`     | From a single 64-bit value (`hi = 0`).                   |
-| `BoundedInt(hi, lo)`         | From explicit limbs.                                     |
-| `is_zero()`                  | True iff the value is `0`.                               |
-| `bit_width()`                | Number of significant bits (`0` for zero).              |
-| `operator== / < / <=`        | Lexicographic comparison on `(hi, lo)`.                  |
-| `operator+ / -`              | Modular 128-bit add / subtract with carry / borrow.     |
-| `mul_small(f)`               | Multiply by `f ≤ 2³²`, staying within 128 bits.         |
-| `divmod(d, rem_out)`         | Restoring long division by 64-bit `d`; returns quotient.|
-| `bit_at(i) / set_bit(i)`     | Single-bit read / write across the limb boundary.       |
+| Member                   | Description                                              |
+|--------------------------|----------------------------------------------------------|
+| `BoundedInt()`           | Zero-initialised value.                                  |
+| `BoundedInt(uint64_t v)` | From a single 64-bit value (`hi = 0`).                   |
+| `BoundedInt(hi, lo)`     | From explicit limbs.                                     |
+| `is_zero()`              | True iff the value is `0`.                               |
+| `bit_width()`            | Number of significant bits (`0` for zero).               |
+| `operator== / < / <=`    | Lexicographic comparison on `(hi, lo)`.                  |
+| `operator+ / -`          | Modular 128-bit add / subtract with carry / borrow.      |
+| `mul_small(f)`           | Multiply by `f ≤ 2³²`, staying within 128 bits.          |
+| `divmod(d, rem_out)`     | Restoring long division by 64-bit `d`; returns quotient. |
+| `bit_at(i) / set_bit(i)` | Single-bit read / write across the limb boundary.        |
 
 All operations are `constexpr`, allowing compile-time evaluation and
 use in `static_assert`-based unit tests.

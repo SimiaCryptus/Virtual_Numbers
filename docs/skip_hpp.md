@@ -106,12 +106,12 @@ Advances a rational-expansion VM by `n` digits in roughly
 
 Behaviour:
 
-| Case                        | Result                                            |
-|-----------------------------|---------------------------------------------------|
-| `period == 0`, `n ≤ pre`    | naive replay (terminating expansion)              |
-| `period == 0`, `n > pre`    | step to end of significant digits; remainder is 0 → all further digits are 0 |
-| `period != 0`, `n < pre`    | naive replay of the preperiod prefix              |
-| `period != 0`, `n ≥ pre`    | replay preperiod, then jump `(n − pre) mod period` within the cycle |
+| Case                     | Result                                                                       |
+|--------------------------|------------------------------------------------------------------------------|
+| `period == 0`, `n ≤ pre` | naive replay (terminating expansion)                                         |
+| `period == 0`, `n > pre` | step to end of significant digits; remainder is 0 → all further digits are 0 |
+| `period != 0`, `n < pre` | naive replay of the preperiod prefix                                         |
+| `period != 0`, `n ≥ pre` | replay preperiod, then jump `(n − pre) mod period` within the cycle          |
 
 > **Note on terminating expansions.** A terminating *b*-ary expansion is the
 > degenerate periodic case whose cycle is the single state `remainder = 0`,

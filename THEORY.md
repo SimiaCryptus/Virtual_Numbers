@@ -164,7 +164,8 @@ monotone refinement process that commits digits as the interval collapses.
 
 This is essentially interval arithmetic combined with online digit extraction, a technique with substantial prior art
 dating to the 1980s. Combined with signed-digit representation, it provides a complete streaming arithmetic layer for
-the reals — with the documented caveat that exact-boundary inputs (e.g., a result that is provably exactly `0.5` in base 10) may not commit a leading digit in finite time. This is not a defect of the implementation but a structural property
+the reals — with the documented caveat that exact-boundary inputs (e.g., a result that is provably exactly `0.5` in base
+10) may not commit a leading digit in finite time. This is not a defect of the implementation but a structural property
 of real-number computation, and the API must expose it honestly via interval-based predicates (`definitely_less_than`,
 `agrees_with(digits=N)`) rather than pretending exact equality is decidable.
 
@@ -240,7 +241,7 @@ But "forkable" hides a critical bifurcation that a single ABI cannot honestly se
 classes of generator:
 
 | Tier                | Examples                                           | State                        | Fork Cost                                  |
-| ------------------- | -------------------------------------------------- | ---------------------------- | ------------------------------------------ |
+|---------------------|----------------------------------------------------|------------------------------|--------------------------------------------|
 | **Automaton class** | Rationals, algebraic irrationals, periodic p-adics | Fixed-size, inline           | **O(1)** — true struct copy                |
 | **Series class**    | Classical transcendentals (π, e, log 2, ζ(3))      | Grows with computation depth | **O(log n)** — must deep-copy accumulators |
 
@@ -444,7 +445,7 @@ generator state.
 No finite automaton suffices.
 
 | Class                     | Minimal VM State Dimension | Memory Growth | Examples                 |
-| ------------------------- | -------------------------- | ------------- | ------------------------ |
+|---------------------------|----------------------------|---------------|--------------------------|
 | Rationals                 | 1                          | constant      | 1/7, 3/8                 |
 | Quadratic irrationals     | 2                          | O(log n)      | √2, φ                    |
 | Classical transcendentals | 3–4                        | O(log n)      | π, e                     |

@@ -81,7 +81,7 @@ The `AutomatonVM` register file is interpreted as follows:
 |------------|----------------------------------------------------------------|
 | `base`     | Codec / digit alphabet size `b`.                               |
 | `phase`    | Digit index `n` (informational; not required for stepping).    |
-| `state[0]` | Running remainder `rₙ`, invariant `0 ≤ rₙ < q`.                 |
+| `state[0]` | Running remainder `rₙ`, invariant `0 ≤ rₙ < q`.                |
 | `state[1]` | Denominator `q`.                                               |
 | `state[2]` | Numerator `p` (recorded at construction; preserved unchanged). |
 
@@ -99,12 +99,12 @@ static constexpr NumVMStep Rational::step(AutomatonVM s);
 Performs one long-division step. Implementation notes:
 
 - Long division is realized *by multiplication*: `scaled = r · b`, then
-`digit = scaled / q` and `next_r = scaled % q`.
+  `digit = scaled / q` and `next_r = scaled % q`.
 - For sane inputs (`q ≲ 2³²`, small `base`), the product `r · b` fits in
-`uint64_t`, since `r < q`.
+  `uint64_t`, since `r < q`.
 - **Degenerate case** `q == 0`: the machine emits a stream of zero digits and
-advances `phase`, rather than dividing by zero. This keeps the generator
-total (every state has a successor).
+  advances `phase`, rather than dividing by zero. This keeps the generator
+  total (every state has a successor).
 
 ### `make_rational(p, q, base) -> AutomatonVM`
 
@@ -119,11 +119,11 @@ Walks the remainder sequence until a remainder repeats, returning
 `{preperiod_length, period_length}`:
 
 - A return of `{idx, 0}` indicates a **terminating** expansion (a remainder of
-`0` was reached at index `idx`).
+  `0` was reached at index `idx`).
 - Otherwise `{i, idx − i}` gives the length of the pre-period and the length of
-the repeating block.
+  the repeating block.
 - A safety bound of `1,000,000` iterations guards against pathological or
-adversarial denominators; on hitting it the function reports `{idx, 0}`.
+  adversarial denominators; on hitting it the function reports `{idx, 0}`.
 
 ## Worked Example
 
@@ -141,12 +141,12 @@ digits `142857142857…`. Here `rational_period(make_rational(1, 7, 10))` return
 ## References
 
 - G. H. Hardy and E. M. Wright, *An Introduction to the Theory of Numbers*,
-6th ed., Oxford University Press, 2008. (Periodicity of positional
-expansions.)
+  6th ed., Oxford University Press, 2008. (Periodicity of positional
+  expansions.)
 - D. E. Knuth, *The Art of Computer Programming, Vol. 2: Seminumerical
-Algorithms*, 3rd ed., Addison-Wesley, 1997. §4.1 (positional number systems),
-§3.1 (cycle detection).
+  Algorithms*, 3rd ed., Addison-Wesley, 1997. §4.1 (positional number systems),
+  §3.1 (cycle detection).
 - R. P. Brent, "An improved Monte Carlo factorization algorithm," *BIT
-Numerical Mathematics* 20 (1980), 176–184. (Space-efficient cycle finding.)
+  Numerical Mathematics* 20 (1980), 176–184. (Space-efficient cycle finding.)
 - R. Bird and O. de Moor, *Algebra of Programming*, Prentice Hall, 1997.
-(Anamorphisms / unfolds as the categorical basis for stream generation.)
+  (Anamorphisms / unfolds as the categorical basis for stream generation.)

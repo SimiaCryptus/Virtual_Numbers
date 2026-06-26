@@ -6,11 +6,11 @@ This header defines the foundational abstractions for the **automaton tier**
 of the NAM (Numeric Automaton Machine) system. It provides three things:
 
 1. **ABI guardrails** — compile-time assertions that pin down the binary
-layout of the core `AutomatonVM` and `NumVMStep` types.
+   layout of the core `AutomatonVM` and `NumVMStep` types.
 2. **The `Generator` concept** — a C++20 constraint describing any type that
-can advance an automaton state by one digit.
+   can advance an automaton state by one digit.
 3. **`num_vm_fork`** — an O(1), side-effect-free duplication of automaton
-state, plus a `take` helper for emitting digit streams.
+   state, plus a `take` helper for emitting digit streams.
 
 The design is documented in Sections 2.2, 2.3, and 3.1 of the NAM
 specification.
@@ -77,12 +77,12 @@ The header expresses the binary contract as `static_assert`s, so that any
 drift in the struct layout becomes a compile error rather than a runtime
 surprise across the C ABI boundary (`nam/abi.h`):
 
-| Assertion | Guarantee |
-|---|---|
-| `sizeof(AutomatonVM) == 40` | Layout is `4 + 4 + 4*8` bytes. |
-| `is_trivially_copyable_v<AutomatonVM>` | Fork is a literal struct copy. |
-| `is_standard_layout_v<AutomatonVM>` | Safe to pass across the C ABI. |
-| `sizeof(NumVMStep) == 48 \|\| <= 56` | `digit + AutomatonVM`, padding-permitting. |
+| Assertion                              | Guarantee                                  |
+|----------------------------------------|--------------------------------------------|
+| `sizeof(AutomatonVM) == 40`            | Layout is `4 + 4 + 4*8` bytes.             |
+| `is_trivially_copyable_v<AutomatonVM>` | Fork is a literal struct copy.             |
+| `is_standard_layout_v<AutomatonVM>`    | Safe to pass across the C ABI.             |
+| `sizeof(NumVMStep) == 48 \|\| <= 56`   | `digit + AutomatonVM`, padding-permitting. |
 
 These are *proofs*, in the spirit of "make illegal states unrepresentable":
 the type system enforces the ABI rather than relying on documentation alone.
@@ -104,11 +104,12 @@ concept Generator = requires(AutomatonVM s)
 exactly (enforced by `std::same_as`).
 
 **Design notes.**
+
 - *Static* `step` means there is no per-generator object state — all state is
-threaded explicitly through `AutomatonVM`, preserving referential
-transparency.
+  threaded explicitly through `AutomatonVM`, preserving referential
+  transparency.
 - The exact return type (`std::same_as<NumVMStep>`, not merely convertible)
-prevents accidental narrowing or implicit-conversion surprises.
+  prevents accidental narrowing or implicit-conversion surprises.
 
 ---
 
@@ -125,13 +126,13 @@ This is the conceptual centerpiece of Phase 1. Forking an automaton is a pure
 value copy:
 
 - **O(1)** — a fixed 40-byte copy, independent of how far the stream has
-advanced.
+  advanced.
 - **No hidden state** — there is nothing to copy *besides* the struct; the
-`static_assert`s above guarantee this.
+  `static_assert`s above guarantee this.
 - **`constexpr`** — usable at compile time, enabling the entire automaton to
-be evaluated by the compiler when the seed is known.
+  be evaluated by the compiler when the seed is known.
 - **`[[nodiscard]]`** — the result is the only output; discarding it is
-almost certainly a bug.
+  almost certainly a bug.
 
 Because state is a value, forking enables **speculative and branching
 evaluation**: a caller may copy a seed, explore one continuation, and discard
@@ -205,17 +206,17 @@ into a `std::array` with no runtime cost.
 ## References
 
 - G. H. Mealy, *A Method for Synthesizing Sequential Circuits*, Bell System
-Technical Journal, 34(5), 1955. — origin of the output-on-transition
-(Mealy) automaton model.
+  Technical Journal, 34(5), 1955. — origin of the output-on-transition
+  (Mealy) automaton model.
 - E. Meijer, M. Fokkinga, R. Paterson, *Functional Programming with Bananas,
-Lenses, Envelopes and Barbed Wire*, FPCA 1991. — anamorphisms / `unfold`,
-the categorical dual of `fold`.
+  Lenses, Envelopes and Barbed Wire*, FPCA 1991. — anamorphisms / `unfold`,
+  the categorical dual of `fold`.
 - ISO/IEC 14882 (C++20), clauses **[basic.types]** (trivially copyable /
-standard-layout semantics) and **[output.iterators]**.
+  standard-layout semantics) and **[output.iterators]**.
 - P0734 *Wording for Concepts* (C++20). — the `concept`/`requires` machinery
-used by `Generator`.
+  used by `Generator`.
 - P2502 / `std::generator`. — the heap-backed coroutine generator this design
-deliberately avoids, in order to keep state copyable.
+  deliberately avoids, in order to keep state copyable.
 
 ---
 

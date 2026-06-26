@@ -36,7 +36,9 @@ namespace
     class PyPrecisionContext
     {
     public:
-        explicit PyPrecisionContext(int digits) : digits_(digits) {}
+        explicit PyPrecisionContext(int digits) : digits_(digits)
+        {
+        }
 
         void enter()
         {
@@ -157,21 +159,21 @@ PYBIND11_MODULE(nam, m)
 
     // ----- Fork (honest cost; value semantics) -----
     number.def("fork", [](const Number& n)
-    {
-        auto pr = n.fork();
-        return py::make_tuple(pr.first, pr.second);
-    }, "Return (a, b) independent forks. O(1) for automaton, O(log n) "
-       "for series; forks receive independent caches.");
+               {
+                   auto pr = n.fork();
+                   return py::make_tuple(pr.first, pr.second);
+               }, "Return (a, b) independent forks. O(1) for automaton, O(log n) "
+               "for series; forks receive independent caches.");
 
     // ----- Skip-ahead -----
     number.def("skip", [](const Number& n, uint64_t k) -> py::object
-    {
-        auto r = n.skip(k);
-        if (!r.has_value()) return py::none();
-        return py::cast(*r);
-    }, py::arg("n"),
-       "Skip n digits (periodic automata only). Returns None when no "
-       "fast-forward path exists (e.g. the series tier).");
+               {
+                   auto r = n.skip(k);
+                   if (!r.has_value()) return py::none();
+                   return py::cast(*r);
+               }, py::arg("n"),
+               "Skip n digits (periodic automata only). Returns None when no "
+               "fast-forward path exists (e.g. the series tier).");
 
     // ----- Digit emission -----
     number
@@ -213,7 +215,7 @@ PYBIND11_MODULE(nam, m)
     number.def("__repr__", [](Number& n)
     {
         return std::string("<nam.Number base=") +
-               std::to_string(n.base()) + " " + n.fork_cost() + ">";
+            std::to_string(n.base()) + " " + n.fork_cost() + ">";
     });
 
     // ---- Free-function ergonomic constructors (mpmath-flavoured) ----

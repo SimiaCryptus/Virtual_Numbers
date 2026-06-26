@@ -30,13 +30,13 @@ print("forked prefixes agree:", a.digits(5) == b.digits(5))
 # Interval-honest comparison: True | False | None.
 x = nam.rational(1, 7, 10)
 y = nam.rational(1, 3, 10)
-print("1/7 < 1/3 ?", x.definitely_less_than(y, 5))   # True
-z = nam.rational(2, 14, 10)                            # == 1/7
-print("1/7 vs 2/14 compare:", x.compare(z, 30))       # None (pending)
+print("1/7 < 1/3 ?", x.definitely_less_than(y, 5))  # True
+z = nam.rational(2, 14, 10)  # == 1/7
+print("1/7 vs 2/14 compare:", x.compare(z, 30))  # None (pending)
 
 # Skip-ahead (periodic automata only).
 print("skip 1000 digits of 1/7 ->", nam.rational(1, 7, 10).skip(1000).digits(6))
-print("series skip is None:", nam.e(10).skip(10))     # None
+print("series skip is None:", nam.e(10).skip(10))  # None
 
 # Rendering.
 print("1/4 ->", nam.rational(1, 4, 10).to_string(4))

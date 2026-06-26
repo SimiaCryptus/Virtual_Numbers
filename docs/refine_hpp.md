@@ -21,15 +21,15 @@ floating point but by procedures that can produce arbitrarily good
 approximations on demand. Foundational treatments include:
 
 - **Boehm, Cartwright, Riggle & O'Donnell (1986)**, *"Exact real
-arithmetic: A case study in higher order programming"* — one of the
-earliest demonstrations of lazy, on-demand real arithmetic.
+  arithmetic: A case study in higher order programming"* — one of the
+  earliest demonstrations of lazy, on-demand real arithmetic.
 - **Edalat & Potts (1997)** and the **interval / linear-fractional
-transformation** school, which represent reals as nested shrinking
-intervals (digit streams over a "signed digit" or LFT basis).
+  transformation** school, which represent reals as nested shrinking
+  intervals (digit streams over a "signed digit" or LFT basis).
 - **Weihrauch's Type-2 Theory of Effectivity (TTE)** (Weihrauch, 2000),
-which provides the computability-theoretic foundation: a real is
-*computable* iff there exists a machine producing a converging sequence
-of rational intervals enclosing it.
+  which provides the computability-theoretic foundation: a real is
+  *computable* iff there exists a machine producing a converging sequence
+  of rational intervals enclosing it.
 
 Our `DigitExtractor` maintains a rational interval `[lo/scale, hi/scale]`
 enclosing the unresolved fractional remainder. As more series terms are
@@ -62,14 +62,14 @@ coincides with `floor(b·hi/scale)`.
 
 ## Representation
 
-| Field        | Meaning |
-|--------------|---------|
-| `vm`         | The `SeriesVM` producing successive partial sums and a rigorous tail (truncation-error) bound. |
-| `base`       | The output radix `b`. |
-| `lo`, `hi`   | Integer numerators of the enclosing interval for the *remaining* fraction, over common denominator `scale`. Invariant: `0 ≤ lo ≤ hi`. |
-| `scale`      | Positive common denominator (= `vm.den`). |
-| `prefix`     | The integer value (in base `b`) of digits already committed. |
-| `consumed`   | Count of committed digits. |
+| Field      | Meaning                                                                                                                               |
+|------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| `vm`       | The `SeriesVM` producing successive partial sums and a rigorous tail (truncation-error) bound.                                        |
+| `base`     | The output radix `b`.                                                                                                                 |
+| `lo`, `hi` | Integer numerators of the enclosing interval for the *remaining* fraction, over common denominator `scale`. Invariant: `0 ≤ lo ≤ hi`. |
+| `scale`    | Positive common denominator (= `vm.den`).                                                                                             |
+| `prefix`   | The integer value (in base `b`) of digits already committed.                                                                          |
+| `consumed` | Count of committed digits.                                                                                                            |
 
 ### Re-derivation invariant (interval honesty)
 
@@ -107,14 +107,14 @@ upstream (see `constants.hpp`).
 Attempts to emit the next base-`b` digit.
 
 - **Mechanism.** Scale by the radix: the candidate digit is
-`floor(b·lo/scale)`. It is committable iff it equals `floor(b·hi/scale)`
-— i.e. the entire interval lies within a single digit cell.
+  `floor(b·lo/scale)`. It is committable iff it equals `floor(b·hi/scale)`
+  — i.e. the entire interval lies within a single digit cell.
 - **Refinement loop.** When the bounds disagree, `refine_terms_per_step`
-additional series terms are stepped to shrink the interval, then the
-loop re-syncs and retries.
+  additional series terms are stepped to shrink the interval, then the
+  loop re-syncs and retries.
 - **Honest pending.** After `max_refine_iters` unsuccessful iterations,
-returns `std::nullopt`. This is *not* an error: it is the correct answer
-for a value lying on (or unresolvably near) a digit boundary.
+  returns `std::nullopt`. This is *not* an error: it is the correct answer
+  for a value lying on (or unresolvably near) a digit boundary.
 
 On success, the digit is folded into `prefix` and `consumed` is
 incremented, so the next call's `sync_interval()` re-derives the new
@@ -128,40 +128,40 @@ extractor by value so the caller's state is left untouched.
 
 ## Tunable parameters
 
-| Parameter                 | Default | Effect |
-|---------------------------|---------|--------|
-| `refine_terms_per_step`   | `1`     | Terms pulled per refinement attempt. Larger values reduce loop overhead for slowly-converging series at the cost of possible over-refinement. |
-| `max_refine_iters`        | `4096`  | Upper bound on refinement attempts before honest pending. Bounds worst-case work on near-boundary values. |
+| Parameter               | Default | Effect                                                                                                                                        |
+|-------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| `refine_terms_per_step` | `1`     | Terms pulled per refinement attempt. Larger values reduce loop overhead for slowly-converging series at the cost of possible over-refinement. |
+| `max_refine_iters`      | `4096`  | Upper bound on refinement attempts before honest pending. Bounds worst-case work on near-boundary values.                                     |
 
 ## Correctness properties
 
 1. **Soundness (no wrong digit).** A digit is emitted only when
-`floor(b·lo/scale) == floor(b·hi/scale)`, so it equals the true digit
-for *every* real in the certified enclosure — hence for the true value.
+   `floor(b·lo/scale) == floor(b·hi/scale)`, so it equals the true digit
+   for *every* real in the certified enclosure — hence for the true value.
 2. **Monotone refinement.** Stepping the VM never widens the certified
-`[num, num+tail]` enclosure, so the interval is non-increasing.
+   `[num, num+tail]` enclosure, so the interval is non-increasing.
 3. **Honest partiality.** Termination with `std::nullopt` occurs only when
-the interval cannot be resolved within budget — consistent with the
-undecidability of exact boundaries under a non-redundant radix
-representation (cf. TTE partial-function semantics).
+   the interval cannot be resolved within budget — consistent with the
+   undecidability of exact boundaries under a non-redundant radix
+   representation (cf. TTE partial-function semantics).
 
 ## References
 
 - Boehm, H., Cartwright, R., Riggle, M., O'Donnell, M. (1986). *Exact real
-arithmetic: A case study in higher order programming.* ACM LISP &
-Functional Programming.
+  arithmetic: A case study in higher order programming.* ACM LISP &
+  Functional Programming.
 - Weihrauch, K. (2000). *Computable Analysis: An Introduction.* Springer
-(Type-2 Theory of Effectivity).
+  (Type-2 Theory of Effectivity).
 - Edalat, A., Potts, P. (1997). *A new representation for exact real
-numbers.* Electronic Notes in Theoretical Computer Science.
+  numbers.* Electronic Notes in Theoretical Computer Science.
 - Ercegovac, M. D., Lang, T. (2004). *Digital Arithmetic.* Morgan
-Kaufmann (online arithmetic, MSD-first production).
+  Kaufmann (online arithmetic, MSD-first production).
 - Muller, J.-M. et al. (2010). *Handbook of Floating-Point Arithmetic.*
-Birkhäuser (the table-maker's dilemma).
+  Birkhäuser (the table-maker's dilemma).
 
 ## See also
 
 - `nam/series.hpp` — the `SeriesVM` providing certified `[num, num+tail]`
-enclosures consumed here.
+  enclosures consumed here.
 - `nam/big_int.hpp` — arbitrary-precision integers and `floordiv`.
 - `THEORY.md` §"Interval Refinement Engine" — the design rationale.

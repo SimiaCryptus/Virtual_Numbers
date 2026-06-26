@@ -81,12 +81,12 @@ sentinel.
 
 The generator stores its configuration in the shared `AutomatonVM` structure:
 
-| Field      | Meaning                                              |
-|------------|------------------------------------------------------|
-| `base`     | the prime `p` (also the output codec radix)          |
-| `phase`    | digit index, counted LSB-up (`0` = least significant)|
-| `state[0]` | current numerator `a` (signed, stored in `int64` bits)|
-| `state[1]` | denominator `b`                                      |
+| Field      | Meaning                                                |
+|------------|--------------------------------------------------------|
+| `base`     | the prime `p` (also the output codec radix)            |
+| `phase`    | digit index, counted LSB-up (`0` = least significant)  |
+| `state[0]` | current numerator `a` (signed, stored in `int64` bits) |
+| `state[1]` | denominator `b`                                        |
 
 Numerators may become negative during reduction, so `state[0]` is interpreted
 as a two's-complement `int64_t`. A floor-division helper (`detail::floordiv`)
@@ -159,10 +159,10 @@ with the classical theory of repeating Hensel codes.
 - K. Hensel, *Theorie der algebraischen Zahlen*, Teubner, 1908.
 - F. Q. Gouvea, *p-adic Numbers: An Introduction*, 2nd ed., Springer, 1997.
 - K. Mahler, *Introduction to p-adic Numbers and Their Functions*,
-Cambridge University Press, 1973.
+  Cambridge University Press, 1973.
 - D. E. Knuth, *The Art of Computer Programming*, Vol. 2: *Seminumerical
-Algorithms*, 3rd ed., Addison-Wesley, 1997 (Sec. 4.5.2, extended Euclid).
+  Algorithms*, 3rd ed., Addison-Wesley, 1997 (Sec. 4.5.2, extended Euclid).
 - R. P. Brent, "An improved Monte Carlo factorization algorithm",
-*BIT* 20 (1980), 176–184 (cycle detection).
+  *BIT* 20 (1980), 176–184 (cycle detection).
 - N. Koblitz, *p-adic Numbers, p-adic Analysis, and Zeta-Functions*,
-2nd ed., Springer, 1984.
+  2nd ed., Springer, 1984.

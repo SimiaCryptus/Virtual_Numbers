@@ -127,33 +127,35 @@ generator's own `step` produces digits in that base.
 ### Enums
 
 #### `enum class GenTag : uint32_t`
+
 The set of automaton generators the JIT/interpreter can specialize.
 
-| Value      | Meaning                              |
-| ---------- | ------------------------------------ |
-| `Rational` | Long-division digit automaton        |
-| `Sqrt`     | Quadratic-irrational extraction      |
-| `PAdic`    | Hensel-expansion p-adic automaton    |
+| Value      | Meaning                           |
+|------------|-----------------------------------|
+| `Rational` | Long-division digit automaton     |
+| `Sqrt`     | Quadratic-irrational extraction   |
+| `PAdic`    | Hensel-expansion p-adic automaton |
 
 #### `enum class ExprKind : uint32_t`
+
 Node kinds for the runtime expression tree.
 
-| Value    | Meaning                                                  |
-| -------- | ------------------------------------------------------- |
-| `Leaf`   | A built-in generator with a seed `AutomatonVM`          |
-| `Rebase` | Reproject a `Rational` child into a new base (codec)    |
+| Value    | Meaning                                              |
+|----------|------------------------------------------------------|
+| `Leaf`   | A built-in generator with a seed `AutomatonVM`       |
+| `Rebase` | Reproject a `Rational` child into a new base (codec) |
 
 ### `struct Expr`
 
 A runtime expression tree node.
 
-| Field        | Valid when            | Description                          |
-| ------------ | --------------------- | ------------------------------------ |
-| `kind`       | always                | Node discriminant                    |
-| `gen`        | `kind == Leaf`        | Which generator the leaf names       |
-| `seed`       | `kind == Leaf`        | Seed `AutomatonVM` for the generator |
-| `rebase_to`  | `kind == Rebase`      | Target radix                         |
-| `child`      | `kind == Rebase`      | The single rebased child             |
+| Field       | Valid when       | Description                          |
+|-------------|------------------|--------------------------------------|
+| `kind`      | always           | Node discriminant                    |
+| `gen`       | `kind == Leaf`   | Which generator the leaf names       |
+| `seed`      | `kind == Leaf`   | Seed `AutomatonVM` for the generator |
+| `rebase_to` | `kind == Rebase` | Target radix                         |
+| `child`     | `kind == Rebase` | The single rebased child             |
 
 #### Leaf builders
 
@@ -193,9 +195,9 @@ inline ResolvedGen resolve_expr(const Expr& e);
 
 - **Leaf** resolves to itself.
 - **Rebase** resolves its child, then:
-  - if the child is `Rational`, applies the analytic codec swap
-    `rational_in_base(seed, rebase_to)`;
-  - otherwise overwrites `seed.base = rebase_to`.
+    - if the child is `Rational`, applies the analytic codec swap
+      `rational_in_base(seed, rebase_to)`;
+    - otherwise overwrites `seed.base = rebase_to`.
 
 ---
 

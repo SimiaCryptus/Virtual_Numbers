@@ -107,13 +107,13 @@ register precisely so that the metric harness can assert this growth shape.
 The generator stores its entire live state in an `AutomatonVM` (see
 `nam/abi.h`):
 
-| Field      | Meaning                                                        |
-|------------|----------------------------------------------------------------|
-| `base`     | The output radix `b` (codec).                                  |
-| `phase`    | The digit index `n` produced so far.                           |
-| `state[0]` | Remainder `R`, low 64 bits (`BoundedInt::lo`).                 |
-| `state[1]` | Remainder `R`, high 64 bits (`BoundedInt::hi`).               |
-| `state[2]` | Accumulated root prefix `P` (integer formed by digits so far). |
+| Field      | Meaning                                                          |
+|------------|------------------------------------------------------------------|
+| `base`     | The output radix `b` (codec).                                    |
+| `phase`    | The digit index `n` produced so far.                             |
+| `state[0]` | Remainder `R`, low 64 bits (`BoundedInt::lo`).                   |
+| `state[1]` | Remainder `R`, high 64 bits (`BoundedInt::hi`).                  |
+| `state[2]` | Accumulated root prefix `P` (integer formed by digits so far).   |
 | `state[3]` | Radicand `D` (for `sqrt`) — retained for inspection/diagnostics. |
 
 The remainder `R` is a 128-bit-capable `BoundedInt` packed across two
@@ -125,24 +125,26 @@ marshal between the packed `state` representation and a `BoundedInt`.
 ## Public API
 
 ### `struct Sqrt`
+
 A model of the `Generator` concept (`static_assert(Generator<Sqrt>)`).
 
 - **`static NumVMStep step(AutomatonVM s)`**
   Performs one digit-extraction step:
-  1. Scale the remainder: `R ← R · b²` (bring down two zero fractional
-     digits).
-  2. Search `x ∈ [1, b)` for the largest digit with
-     `(2·P·b + x)·x ≤ R`. The loop relies on the monotonicity of the
-     candidate expression to `break` early.
-  3. Subtract the matched term from `R`, update `P ← P·b + x`, advance
-     `phase`.
-  4. Return the emitted digit and the next VM state.
+    1. Scale the remainder: `R ← R · b²` (bring down two zero fractional
+       digits).
+    2. Search `x ∈ [1, b)` for the largest digit with
+       `(2·P·b + x)·x ≤ R`. The loop relies on the monotonicity of the
+       candidate expression to `break` early.
+    3. Subtract the matched term from `R`, update `P ← P·b + x`, advance
+       `phase`.
+    4. Return the emitted digit and the next VM state.
 
 - **`static int prefix_bitwidth(const AutomatonVM& s)`**
   Diagnostic accessor returning `BoundedInt(s.state[2]).bit_width()`, used by
   the complexity-metric instrumentation to verify register-growth behavior.
 
 ### `inline AutomatonVM make_sqrt(uint64_t D, uint32_t base)`
+
 Constructs a generator for the **fractional digits** of `sqrt(D)` in the
 given radix.
 
@@ -153,6 +155,7 @@ given radix.
 - The emitted digit stream is the fractional expansion of `sqrt(D)`.
 
 ### `inline AutomatonVM make_sqrt5(uint32_t base)`
+
 Convenience wrapper: `make_sqrt(5, base)`.
 
 ---

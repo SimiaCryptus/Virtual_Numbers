@@ -116,18 +116,20 @@ namespace nam
         case ExprKind::Leaf:
             return ResolvedGen{e.gen, e.seed};
         case ExprKind::Rebase:
-        {
-            ResolvedGen c = resolve_expr(*e.child);
-            if (c.gen == GenTag::Rational)
             {
-                // Analytic rational reprojection (codec.hpp).
-                return ResolvedGen{GenTag::Rational,
-                                   rational_in_base(c.seed, e.rebase_to)};
+                ResolvedGen c = resolve_expr(*e.child);
+                if (c.gen == GenTag::Rational)
+                {
+                    // Analytic rational reprojection (codec.hpp).
+                    return ResolvedGen{
+                        GenTag::Rational,
+                        rational_in_base(c.seed, e.rebase_to)
+                    };
+                }
+                // Generic generators carry base in the VM directly.
+                c.seed.base = e.rebase_to;
+                return c;
             }
-            // Generic generators carry base in the VM directly.
-            c.seed.base = e.rebase_to;
-            return c;
-        }
         }
         return ResolvedGen{e.gen, e.seed};
     }

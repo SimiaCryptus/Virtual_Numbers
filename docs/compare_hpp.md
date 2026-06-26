@@ -67,11 +67,11 @@ enum class Trit { Less, Greater, Indistinguishable };
 
 The three-valued result of a bounded comparison.
 
-| Value               | Meaning                                                        |
-| ------------------- | -------------------------------------------------------------- |
-| `Less`              | `x` is **provably** less than `y` within the digit budget.     |
-| `Greater`           | `x` is **provably** greater than or equal-then-greater than `y`.|
-| `Indistinguishable` | No definite ordering established within `max_digits` (pending). |
+| Value               | Meaning                                                          |
+|---------------------|------------------------------------------------------------------|
+| `Less`              | `x` is **provably** less than `y` within the digit budget.       |
+| `Greater`           | `x` is **provably** greater than or equal-then-greater than `y`. |
+| `Indistinguishable` | No definite ordering established within `max_digits` (pending).  |
 
 `Indistinguishable` does **not** assert equality — equality is undecidable.
 It asserts only that the two streams agreed on every inspected digit, so the
@@ -109,11 +109,11 @@ std::optional<bool> definitely_less_than(AutomatonVM x, AutomatonVM y,
 
 Scans up to `max_digits` digit positions, most-significant first.
 
-| Return                  | Interpretation                                              |
-| ----------------------- | ---------------------------------------------------------- |
-| `true`                  | `x` is provably `< y` (first differing digit had `x < y`). |
-| `false` (engaged)       | `x` is provably `≥`-then-`>` (first differing digit `x > y`).|
-| `std::nullopt`          | Pending / indistinguishable within `max_digits`.           |
+| Return            | Interpretation                                                |
+|-------------------|---------------------------------------------------------------|
+| `true`            | `x` is provably `< y` (first differing digit had `x < y`).    |
+| `false` (engaged) | `x` is provably `≥`-then-`>` (first differing digit `x > y`). |
+| `std::nullopt`    | Pending / indistinguishable within `max_digits`.              |
 
 The contract is **soundness without completeness**: an engaged result is
 always correct; the *absence* of a result (`nullopt`) is never a false
