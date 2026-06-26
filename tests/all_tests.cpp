@@ -18,6 +18,11 @@
 #include "nam/compare.hpp"
 #include "nam/metric.hpp"
 #include "nam/skip.hpp"
+#include "nam/big_int.hpp"
+#include "nam/series.hpp"
+#include "nam/refine.hpp"
+#include "nam/constants.hpp"
+#include "nam/memo.hpp"
 
 using namespace nam;
 
@@ -298,6 +303,132 @@ NAM_TEST(mat_pow_modexp_kernel) {
     CHECK(p.b == 55); // F(10)
     CHECK(p.a == 89); // F(11)
     CHECK(p.d == 34); // F(9)
+}
+// ========================= PHASE 2: SERIES TIER =========================
+// ---------- BigInt: arbitrary-precision arithmetic ----------
+NAM_TEST(bigint_basic_arithmetic) {
+     BigInt a(123456789);
+     BigInt b(987654321);
+     CHECK((a + b) == BigInt(1111111110));
+     CHECK((b - a) == BigInt(864197532));
+     CHECK((a - b) == BigInt(-864197532));
+     CHECK((BigInt(7) * BigInt(6)) == BigInt(42));
+     CHECK((BigInt(-7) * BigInt(6)) == BigInt(-42));
+}
+NAM_TEST(bigint_large_multiply) {
+     // 2^64 fits and multiplies exactly beyond 64 bits.
+     BigInt two_to_32 = big_pow(BigInt(2), 32);
+     BigInt two_to_64 = two_to_32 * two_to_32;
+     CHECK(two_to_64.to_string() == "18446744073709551616");
+     BigInt big = big_pow(BigInt(2), 100);
+     CHECK(big.to_string() == "1267650600228229401496703205376");
+}
+NAM_TEST(bigint_divmod_and_floordiv) {
+     BigInt q, r;
+     // 100 / 7 = 14 rem 2.
+     q = BigInt::divmod(BigInt(100), BigInt(7), r);
+     CHECK(q == BigInt(14));
+     CHECK(r == BigInt(2));
+     // -100 floordiv 7 = -15 rem 5.
+     q = BigInt::floordiv(BigInt(-100), BigInt(7), r);
+     CHECK(q == BigInt(-15));
+     CHECK(r == BigInt(5));
+}
+NAM_TEST(bigint_bit_width_grows) {
+     CHECK(BigInt(0).bit_width() == 0);
+     CHECK(BigInt(1).bit_width() == 1);
+     CHECK(BigInt(255).bit_width() == 8);
+     CHECK(big_pow(BigInt(2), 100).bit_width() == 101);
+}
+// ---------- Series tier: factorial accumulator for e ----------
+NAM_TEST(series_e_partial_sum_converges) {
+     // S_n = sum_{k=0}^{n-1} 1/k!. After summing terms, num/den should equal
+     // the exact rational partial sum. After 5 terms (k=0..4):
+     //   1 + 1 + 1/2 + 1/6 + 1/24 = 65/24.
+     SeriesVM vm = make_e(10);
+     for (int i = 0; i < 5; ++i) vm.step_term();
+     // num/den == 65/24. den should be 4! = 24.
+     CHECK(vm.den == BigInt(24));
+     CHECK(vm.num == BigInt(65));
+}
+NAM_TEST(series_fork_is_deep_copy) {
+     // Fork the series VM; mutate the original; the fork must be unaffected
+     // (deep copy, NOT copy-on-write aliasing).
+     SeriesVM a = make_e(10);
+     for (int i = 0; i < 4; ++i) a.step_term();
+     SeriesVM b = a.fork();
+     BigInt b_num_before = b.num;
+     // Advance only `a`.
+     for (int i = 0; i < 10; ++i) a.step_term();
+     CHECK(b.num == b_num_before);   // fork untouched -> deep copy proven
+     CHECK(a.index == 14);
+     CHECK(b.index == 4);
+}
+NAM_TEST(series_accumulator_bitwidth_grows) {
+     // Memory is the complexity metric: series-tier accumulator bit-width
+     // grows with depth (the factorial denominator grows). Monotone.
+     SeriesVM vm = make_e(10);
+     int prev = vm.accumulator_bitwidth();
+     for (int i = 0; i < 20; ++i) {
+         vm.step_term();
+         int w = vm.accumulator_bitwidth();
+         CHECK(w >= prev);
+         prev = w;
+     }
+     CHECK(prev > 0);
+}
+// ---------- Digit extraction via interval refinement ----------
+NAM_TEST(extract_one_over_e_digits) {
+     // 1/e = 0.36787944117...  fractional value already in [0,1).
+     SeriesVM vm = make_one_over_e(10);
+     DigitExtractor ex = make_extractor(vm, 10);
+     auto digits = extract_digits(ex, 6);
+     // First digit must be 3, then 6, 7, 8, 7, 9 ...
+     const uint32_t expect[] = {3,6,7,8,7,9};
+     CHECK(digits.size() >= 6);
+     for (size_t i = 0; i < digits.size() && i < 6; ++i) {
+         CHECK(digits[i] == expect[i]);
+     }
+}
+NAM_TEST(extract_ln2_digits) {
+     // ln 2 = 0.69314718056...  value in [0,1).
+     SeriesVM vm = make_ln2(10);
+     DigitExtractor ex = make_extractor(vm, 10);
+     auto digits = extract_digits(ex, 6);
+     const uint32_t expect[] = {6,9,3,1,4,7};
+     CHECK(digits.size() >= 6);
+     for (size_t i = 0; i < digits.size() && i < 6; ++i) {
+         CHECK(digits[i] == expect[i]);
+     }
+}
+// ---------- Explicit bounded LRU memoization ----------
+NAM_TEST(lru_cache_bounds_and_evicts) {
+     LruDigitCache cache(3);
+     cache.put(0, 1);
+     cache.put(1, 4);
+     cache.put(2, 2);
+     CHECK(cache.size() == 3);
+     CHECK(*cache.get(0) == 1);   // touches 0 -> MRU
+     cache.put(3, 8);             // evicts LRU (which is 1)
+     CHECK(cache.size() == 3);
+     CHECK(!cache.get(1).has_value()); // 1 was evicted
+     CHECK(*cache.get(0) == 1);
+     CHECK(*cache.get(3) == 8);
+}
+NAM_TEST(cached_digit_source_no_recompute) {
+     // Wrap a sequential producer and check cache hits serve prior indices.
+     int calls = 0;
+     auto producer = [&calls]() -> std::optional<uint32_t> {
+         return static_cast<uint32_t>(calls++ % 10);
+     };
+     CachedDigitSource<decltype(producer)> src(producer, 100);
+     CHECK(*src.digit(0) == 0);
+     CHECK(*src.digit(5) == 5); // produces 1..5
+     CHECK(calls == 6);
+     // Re-querying earlier indices must NOT call producer again.
+     CHECK(*src.digit(2) == 2);
+     CHECK(*src.digit(0) == 0);
+     CHECK(calls == 6);         // no recompute
 }
 
 NAM_TEST_RUN_ALL()

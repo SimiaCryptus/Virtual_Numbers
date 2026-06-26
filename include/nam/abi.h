@@ -21,14 +21,16 @@ extern "C" {
 /* ABI version. Bump on ANY layout change. */
 #define NAM_ABI_VERSION 1
 
-typedef struct {
-    uint32_t base;      /* codec selector -- NOT baked into the number */
-    uint32_t phase;     /* periodic-orbit phase / index                */
-    uint64_t state[4];  /* over-provisioned for degree-4 algebraic     */
+typedef struct
+{
+    uint32_t base; /* codec selector -- NOT baked into the number */
+    uint32_t phase; /* periodic-orbit phase / index                */
+    uint64_t state[4]; /* over-provisioned for degree-4 algebraic     */
 } AutomatonVM;
 
-typedef struct {
-    uint32_t    digit;
+typedef struct
+{
+    uint32_t digit;
     AutomatonVM next;
 } NumVMStep;
 

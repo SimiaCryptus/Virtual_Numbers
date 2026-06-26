@@ -14,6 +14,11 @@ endif()
 # (nam::BoundedInt) that mirrors the APInt semantics we actually use:
 # bounded bit-width with explicit O(log n) growth tracking.
 option(NAM_USE_LLVM_APINT "Use llvm::APInt instead of vendored BoundedInt" OFF)
+# GMP is preferred for the series-tier unbounded accumulators; to keep
+# Phase 2 buildable with no external dependency we vendor a minimal
+# arbitrary-precision integer (nam::BigInt). Enable this to use GMP instead
+# (a thin RAII wrapper would replace the vendored BigInt).
+option(NAM_USE_GMP "Use libgmp for series-tier accumulators" OFF)
 
 add_library(nam INTERFACE)
 target_include_directories(nam INTERFACE
@@ -24,6 +29,13 @@ if(NAM_USE_LLVM_APINT)
     find_package(LLVM CONFIG REQUIRED)
     target_include_directories(nam INTERFACE ${LLVM_INCLUDE_DIRS})
     target_compile_definitions(nam INTERFACE NAM_USE_LLVM_APINT=1)
+endif()
+if(NAM_USE_GMP)
+     find_package(PkgConfig REQUIRED)
+     pkg_check_modules(GMP REQUIRED gmp)
+     target_include_directories(nam INTERFACE ${GMP_INCLUDE_DIRS})
+     target_link_libraries(nam INTERFACE ${GMP_LIBRARIES})
+     target_compile_definitions(nam INTERFACE NAM_USE_GMP=1)
 endif()
 
 enable_testing()
