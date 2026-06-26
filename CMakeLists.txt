@@ -38,5 +38,13 @@ if(NAM_USE_GMP)
      target_compile_definitions(nam INTERFACE NAM_USE_GMP=1)
 endif()
 
+# Phase 3: the ergonomic Python user layer via pybind11. Off by default so
+# the core library still builds with zero external dependencies.
+option(NAM_BUILD_PYTHON "Build the pybind11 Python bindings" OFF)
+if(NAM_BUILD_PYTHON)
+   add_subdirectory(bindings)
+endif()
+
+
 enable_testing()
 add_subdirectory(tests)
