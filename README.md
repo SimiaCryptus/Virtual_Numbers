@@ -129,3 +129,18 @@ cmake -S . -B build -G Ninja -DNAM_USE_LLVM_APINT=ON
    pending (`nullopt`), never a false definite digit.
 - **Memoization is explicit and bounded**: `LruDigitCache` /
    `CachedDigitSource` are opt-in wrappers; there is no hidden global cache.
+## User tier (Phase 3) commitments preserved
+- **Precision contexts are scoped, not global**: `PrecisionContext` is a
+    thread-local RAII guard. Nesting restores the prior value on scope exit;
+    there is no global mutable precision leaking across threads or scopes.
+- **Fork cost is annotated by tier**: `Number::fork_cost()` reports `O(1)`
+    for the automaton tier and `O(log n)` for the series tier, and the fork
+    itself dispatches to the matching copy (struct copy vs deep copy).
+- **Comparison stays interval-honest at the user layer**: `definitely_less_than`
+    returns `std::optional<bool>` (pending) and `compare` returns a `Trit`;
+    `agrees_with` is exact for a finite prefix. No false definite equality.
+- **Memoization is an explicit mode**: `.streaming()` (O(1) space) and
+    `.cached(max_digits=N)` (bounded LRU) are user choices; forks receive
+    independent caches so value semantics are never violated.
+- **Base is a codec**: `in_base(b)` reprojects without mutating the original
+    Number (`base()` of the source is unchanged).
