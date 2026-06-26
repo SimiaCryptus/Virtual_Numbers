@@ -7,6 +7,12 @@ skip-ahead.
 
 ## Build & test
 
+```shell
+sudo apt update && sudo apt install -y build-essential ninja-build cmake
+rm -rf build && clear && cmake -S . -B build -G Ninja && cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
 ```sh
 cmake -S . -B build -G Ninja
 cmake --build build
@@ -23,15 +29,15 @@ cmake -S . -B build -G Ninja -DNAM_USE_LLVM_APINT=ON
 
 ## Milestone mapping
 
-| Milestone | Header                | Status |
-|-----------|-----------------------|--------|
-| M1 ABI    | `nam/abi.h`, `nam/generator.hpp` | frozen, `static_assert`ed |
-| M2 Rationals | `nam/rational.hpp` | constant state, period detection |
-| M3 Quadratics | `nam/algebraic.hpp` | degree-2 sqrt recurrence, bit-width instrumented |
-| M4 Codec | `nam/codec.hpp` | base as projection, round-trips |
-| M5 p-adics | `nam/padic.hpp` | local commitment, valuation extractor |
-| M6 Compare/Metric | `nam/compare.hpp`, `nam/metric.hpp` | interval-honest, product automaton |
-| M7 Skip | `nam/skip.hpp` | periodic skip + modexp kernel |
+| Milestone         | Header                              | Status                                           |
+|-------------------|-------------------------------------|--------------------------------------------------|
+| M1 ABI            | `nam/abi.h`, `nam/generator.hpp`    | frozen, `static_assert`ed                        |
+| M2 Rationals      | `nam/rational.hpp`                  | constant state, period detection                 |
+| M3 Quadratics     | `nam/algebraic.hpp`                 | degree-2 sqrt recurrence, bit-width instrumented |
+| M4 Codec          | `nam/codec.hpp`                     | base as projection, round-trips                  |
+| M5 p-adics        | `nam/padic.hpp`                     | local commitment, valuation extractor            |
+| M6 Compare/Metric | `nam/compare.hpp`, `nam/metric.hpp` | interval-honest, product automaton               |
+| M7 Skip           | `nam/skip.hpp`                      | periodic skip + modexp kernel                    |
 
 ## ABI contract (frozen)
 

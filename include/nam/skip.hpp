@@ -61,10 +61,10 @@ inline Mat2 mat_mul(const Mat2& x, const Mat2& y, uint64_t m) {
         return (static_cast<unsigned __int128>(p) * q) % m;
     };
     return Mat2{
-        (mul(x.a, y.a) + mul(x.b, y.c)) % m,
-        (mul(x.a, y.b) + mul(x.b, y.d)) % m,
-        (mul(x.c, y.a) + mul(x.d, y.c)) % m,
-        (mul(x.c, y.b) + mul(x.d, y.d)) % m,
+        static_cast<uint64_t>((mul(x.a, y.a) + mul(x.b, y.c)) % m),
+        static_cast<uint64_t>((mul(x.a, y.b) + mul(x.b, y.d)) % m),
+        static_cast<uint64_t>((mul(x.c, y.a) + mul(x.d, y.c)) % m),
+        static_cast<uint64_t>((mul(x.c, y.b) + mul(x.d, y.d)) % m),
     };
 }
 
