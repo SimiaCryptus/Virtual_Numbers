@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(numbers_as_machines C CXX)
+project(numbers_as_machines)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,6 +8,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif ()
+
+add_library(nam INTERFACE)
+target_include_directories(nam INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+target_compile_features(nam INTERFACE cxx_std_20)
 
 # APInt is desired per the plan, but to keep Phase 1 buildable without a
 # full LLVM install we provide a tiny vendored bounded-bit-width integer
@@ -20,16 +25,19 @@ option(NAM_USE_LLVM_APINT "Use llvm::APInt instead of vendored BoundedInt" OFF)
 # (a thin RAII wrapper would replace the vendored BigInt).
 option(NAM_USE_GMP "Use libgmp for series-tier accumulators" OFF)
 
-add_library(nam INTERFACE)
-target_include_directories(nam INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
-target_compile_features(nam INTERFACE cxx_std_20)
-
 if (NAM_USE_LLVM_APINT)
     find_package(LLVM CONFIG REQUIRED)
     target_include_directories(nam INTERFACE ${LLVM_INCLUDE_DIRS})
     target_compile_definitions(nam INTERFACE NAM_USE_LLVM_APINT=1)
 endif ()
+if (NAM_USE_GMP)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GMP REQUIRED gmp)
+    target_include_directories(nam INTERFACE ${GMP_INCLUDE_DIRS})
+    target_link_libraries(nam INTERFACE ${GMP_LIBRARIES})
+    target_compile_definitions(nam INTERFACE NAM_USE_GMP=1)
+endif ()
+
 # Phase 4: the JIT compilation path. compile(expr_tree) -> NumVMFn. Off by
 # default so the core library still builds with zero external dependencies
 # (it falls back to a function-pointer interpreter that honors the same C
@@ -46,25 +54,16 @@ if (NAM_USE_LLVM_JIT)
     target_link_libraries(nam INTERFACE ${NAM_LLVM_LIBS})
 endif ()
 
-if (NAM_USE_GMP)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(GMP REQUIRED gmp)
-    target_include_directories(nam INTERFACE ${GMP_INCLUDE_DIRS})
-    target_link_libraries(nam INTERFACE ${GMP_LIBRARIES})
-    target_compile_definitions(nam INTERFACE NAM_USE_GMP=1)
-endif ()
-
 # Phase 3: the ergonomic Python user layer via pybind11. Off by default so
 # the core library still builds with zero external dependencies.
 option(NAM_BUILD_PYTHON "Build the pybind11 Python bindings" OFF)
 if (NAM_BUILD_PYTHON)
     add_subdirectory(bindings/python)
 endif ()
-# Phase 3 (WASM target): the ergonomic user layer compiled to WebAssembly via
-# Emscripten + embind. Off by default so the core still builds with no
-# external dependencies. Enable with the Emscripten toolchain:
-#   emcmake cmake -S . -B build-wasm -DNAM_BUILD_WASM=ON
-#   cmake --build build-wasm
+
+# Phase 3 (WASM target): the ergonomic user layer compiled to WebAssembly via Emscripten + embind
+# Enable with the Emscripten toolchain:
+#   emcmake cmake -S . -B build-wasm -DNAM_BUILD_WASM=ON && cmake --build build-wasm
 #   node build-wasm/bindings/wasm/test_nam_wasm.js
 option(NAM_BUILD_WASM "Build the Emscripten/embind WebAssembly bindings" OFF)
 if (NAM_BUILD_WASM)

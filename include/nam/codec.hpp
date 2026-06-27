@@ -21,9 +21,9 @@
 #include <cstdint>
 #include <vector>
 
-#include "nam/abi.h"
-#include "nam/generator.hpp"
-#include "nam/rational.hpp"
+#include "abi.h"
+#include "generator.hpp"
+#include "rational.hpp"
 
 namespace nam
 {

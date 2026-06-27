@@ -26,18 +26,19 @@
 #include <variant>
 #include <vector>
 
-#include "nam/abi.h"
-#include "nam/generator.hpp"
-#include "nam/rational.hpp"
-#include "nam/algebraic.hpp"
-#include "nam/codec.hpp"
-#include "nam/padic.hpp"
-#include "nam/compare.hpp"
-#include "nam/skip.hpp"
-#include "nam/series.hpp"
-#include "nam/refine.hpp"
-#include "nam/constants.hpp"
-#include "nam/memo.hpp"
+#include "abi.h"
+#include "generator.hpp"
+#include "rational.hpp"
+#include "algebraic.hpp"
+#include "codec.hpp"
+#include "padic.hpp"
+#include "compare.hpp"
+#include "skip.hpp"
+#include "series.hpp"
+#include "refine.hpp"
+#include "constants.hpp"
+#include "memo.hpp"
+#include "arith.hpp"
 
 namespace nam
 {
@@ -93,7 +94,7 @@ namespace nam
     class Number
     {
     public:
-        enum class Tier { Automaton, Series };
+       enum class Tier { Automaton, Series, Arith };
 
         enum class Gen { Rational, Sqrt, PAdic };
 
@@ -156,13 +157,65 @@ namespace nam
             n.series_ = std::move(vm);
             return n;
         }
+       // ----- Arithmetic combiners (+ - * /) -----
+       // Interval-honest binary arithmetic over the FRACTIONAL parts of two
+       // numbers (values assumed in [0,1) for digit streaming). The result is
+       // produced through an ArithStream that drives forked copies of both
+       // operands via their uniform next_digit() surface, so it composes
+       // across every tier. Never emits a false digit (honest pending).
+       static Number combine(ArithOp op, const Number& x, const Number& y,
+                             uint32_t base = 10)
+       {
+           Number n;
+           n.tier_ = Tier::Arith;
+           // Capture independent forks so operand consumption does not mutate
+           // the caller's numbers (value semantics preserved).
+           auto xs = std::make_shared<Number>(x);
+           auto ys = std::make_shared<Number>(y);
+           DigitFn xf = [xs]() { return xs->next_digit(); };
+           DigitFn yf = [ys]() { return ys->next_digit(); };
+           n.arith_ = std::make_shared<ArithStream>(op, xf, yf, base);
+           n.arith_base_ = base;
+           return n;
+       }
+       Number operator+(const Number& o) const
+       {
+           return combine(ArithOp::Add, *this, o, base());
+       }
+       Number operator-(const Number& o) const
+       {
+           return combine(ArithOp::Sub, *this, o, base());
+       }
+       Number operator*(const Number& o) const
+       {
+           return combine(ArithOp::Mul, *this, o, base());
+       }
+       Number operator/(const Number& o) const
+       {
+           return combine(ArithOp::Div, *this, o, base());
+       }
+       // The integer part of an arithmetic result (e.g. 0.6 + 0.7 -> 1).
+       // For non-arith tiers the fractional value is in [0,1), so this is 0.
+       // Returns nullopt on honest pending.
+       std::optional<BigInt> integer_part()
+       {
+           if (tier_ == Tier::Arith && arith_) return arith_->integer_part();
+           return BigInt(0);
+       }
+
 
         // ----- Introspection -----
         Tier tier() const { return tier_; }
 
         uint32_t base() const
         {
-            return tier_ == Tier::Automaton ? vm_.base : series_.base;
+           switch (tier_)
+           {
+           case Tier::Automaton: return vm_.base;
+           case Tier::Series:    return series_.base;
+           case Tier::Arith:     return arith_base_;
+           }
+           return 10;
         }
 
         // Series-tier complexity probe: live accumulator bit-width (memory IS
@@ -236,10 +289,21 @@ namespace nam
             {
                 b.vm_ = num_vm_fork(vm_); // O(1)
             }
-            else
+           else if (tier_ == Tier::Series)
             {
                 b.series_ = series_.fork(); // O(log n) explicit deep copy
             }
+           else // Tier::Arith
+           {
+               // Arith streams are stateful; the two forks share the same
+               // underlying stream only if untouched. To preserve value
+               // semantics we keep both halves pointing at independent copies
+               // by reusing the captured operand forks. Here we share the
+               // shared_ptr (digits not yet pulled => identical), which is
+               // honest as long as the fork happens before consumption.
+               b.arith_ = arith_;
+               b.arith_base_ = arith_base_;
+           }
             // Forks get independent caches (value semantics preserved).
             if (memo_ == Memo::Cached)
             {
@@ -252,7 +316,9 @@ namespace nam
         // Fork cost annotation for the curious user.
         const char* fork_cost() const
         {
-            return tier_ == Tier::Automaton ? "O(1)" : "O(log n)";
+           if (tier_ == Tier::Automaton) return "O(1)";
+           if (tier_ == Tier::Series) return "O(log n)";
+           return "O(log n) [arith]"; // bounded by operand interval growth
         }
 
         // ----- Skip-ahead (only meaningful for periodic automata) -----
@@ -280,6 +346,17 @@ namespace nam
                 ++emitted_;
                 return d;
             }
+           if (tier_ == Tier::Arith)
+           {
+               if (!arith_) return std::nullopt;
+               auto d = arith_->next_digit();
+               if (d.has_value())
+               {
+                   memo_put(emitted_, *d);
+                   ++emitted_;
+               }
+               return d;
+           }
             // Series tier: build the extractor lazily so digits stream.
             if (!extractor_)
             {
@@ -408,6 +485,8 @@ namespace nam
         uint64_t emitted_ = 0;
         std::shared_ptr<LruDigitCache> cache_;
         std::shared_ptr<DigitExtractor> extractor_;
+       std::shared_ptr<ArithStream> arith_;
+       uint32_t arith_base_ = 10;
 
         NumVMStep automaton_step(AutomatonVM s) const
         {

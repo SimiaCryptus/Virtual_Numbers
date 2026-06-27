@@ -20,8 +20,8 @@
 #include <optional>
 #include <vector>
 
-#include "nam/big_int.hpp"
-#include "nam/series.hpp"
+#include "big_int.hpp"
+#include "series.hpp"
 
 namespace nam
 {

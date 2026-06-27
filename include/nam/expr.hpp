@@ -22,11 +22,11 @@
 #include <memory>
 #include <vector>
 
-#include "nam/abi.h"
-#include "nam/rational.hpp"
-#include "nam/algebraic.hpp"
-#include "nam/padic.hpp"
-#include "nam/codec.hpp"
+#include "abi.h"
+#include "rational.hpp"
+#include "algebraic.hpp"
+#include "padic.hpp"
+#include "codec.hpp"
 
 namespace nam
 {

@@ -25,9 +25,9 @@
 
 #include <cstdint>
 
-#include "nam/abi.h"
-#include "nam/generator.hpp"
-#include "nam/bounded_int.hpp"
+#include "abi.h"
+#include "generator.hpp"
+#include "bounded_int.hpp"
 
 namespace nam
 {

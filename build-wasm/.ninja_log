@@ -1,5 +1,0 @@
-# ninja log v5
-1	1904	1782525029794216886	bindings/wasm/CMakeFiles/nam_wasm.dir/nam_wasm.cpp.o	4978c9e0ae525f3e
-1905	3296	1782525031177995645	bindings/wasm/nam_wasm.js	b636cdebd5602176
-1	5279	1782525033163206361	tests/CMakeFiles/nam_tests.dir/all_tests.cpp.o	36776b4054080410
-5279	7673	1782525035539198941	tests/nam_tests.js	e3620f352742d2b5

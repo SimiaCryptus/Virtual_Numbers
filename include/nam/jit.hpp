@@ -37,8 +37,8 @@
 #include <stdexcept>
 #include <vector>
 
-#include "nam/abi.h"
-#include "nam/expr.hpp"
+#include "abi.h"
+#include "expr.hpp"
 
 #if NAM_USE_LLVM_JIT
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"

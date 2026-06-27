@@ -25,7 +25,7 @@
 #include <optional>
 #include <memory>
 
-#include "nam/big_int.hpp"
+#include "big_int.hpp"
 
 namespace nam
 {

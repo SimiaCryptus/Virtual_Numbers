@@ -8,7 +8,7 @@
 #include <concepts>
 #include <type_traits>
 
-#include "nam/abi.h"
+#include "abi.h"
 
 namespace nam
 {

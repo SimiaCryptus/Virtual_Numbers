@@ -12,10 +12,10 @@
 #include <array>
 #include <cstdint>
 
-#include "nam/abi.h"
-#include "nam/generator.hpp"
-#include "nam/rational.hpp"
-#include "nam/padic.hpp"
+#include "abi.h"
+#include "generator.hpp"
+#include "rational.hpp"
+#include "padic.hpp"
 
 namespace nam
 {

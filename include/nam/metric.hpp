@@ -15,8 +15,8 @@
 #include <cmath>
 #include <optional>
 
-#include "nam/abi.h"
-#include "nam/generator.hpp"
+#include "abi.h"
+#include "generator.hpp"
 
 namespace nam
 {
