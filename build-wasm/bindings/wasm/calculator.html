@@ -356,6 +356,27 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
                 <button data-cmp="agrees">agrees</button>
             </div>
         </fieldset>
+        <h2>Arithmetic (interval-honest)</h2>
+        <fieldset>
+            <legend>combine two registers (fractional operands in [0,1))</legend>
+            <div class="row">
+                <div class="col"><label for="aA">A</label>
+                    <input id="aA" type="text" value="_"/></div>
+                <div class="col"><label for="aB">B</label>
+                    <input id="aB" type="text" value="_"/></div>
+                <div class="col"><label for="aStore">store ›</label>
+                    <input class="store" id="aStore" placeholder="name"
+                           type="text"/></div>
+            </div>
+            <div class="row">
+                <button data-arith="add">add</button>
+                <button data-arith="sub">sub</button>
+                <button data-arith="mul">mul</button>
+                <button data-arith="div">div</button>
+                <button data-arith="ipart">ipart</button>
+            </div>
+        </fieldset>
+
 
         <h2>Precision context (scoped)</h2>
         <fieldset>
@@ -673,6 +694,30 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
                     ? asInt(rawArgs[2], 'MAXD') : 30;
                 return `agrees: ${a.agrees_with(b, maxd)}`;
             }
+            case 'add':
+            case 'sub':
+            case 'mul':
+            case 'div': {
+                const {store, rest} = extractStore(rawArgs);
+                const a = lookup(rest[0]);
+                const b = lookup(rest[1]);
+                // Honesty guard (mirrors the Node REPL): interval-honest
+                // arithmetic consumes only the FRACTIONAL digit stream of
+                // each operand (values in [0,1)). Integer / improper values
+                // (e.g. rational 4 1) stream as 0.000..., so a combination
+                // involving them is NOT meaningful. Surface this honestly.
+                log(escapeHtml('note: arithmetic is fractional-only ' +
+                    '(operands in [0,1)); integer/improper operands stream ' +
+                    'as 0.000... and yield meaningless results.'),
+                    'log-pending');
+                const o = setLast(a[cmd](b));
+                if (store) regs[store] = o;
+                return (store ? `${store} := ` : '') + o.toString();
+            }
+            case 'ipart': {
+                const num = lookup(rawArgs[0]);
+                return `integer part: ${triStr(num.integer_part())}`;
+            }
             default:
                 throw new Error(`unknown command "${cmd}"`);
         }
@@ -780,6 +825,21 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             });
         }
     }
+    function wireArithmetic() {
+        for (const btn of document.querySelectorAll('[data-arith]')) {
+            btn.addEventListener('click', () => {
+                const op = btn.dataset.arith;
+                const a = $('aA').value.trim() || '_';
+                const b = $('aB').value.trim() || '_';
+                const store = storeSuffix('aStore');
+                const cmd = op === 'ipart'
+                    ? `ipart ${a}`
+                    : `${op} ${a} ${b}${store}`;
+                runCommand(cmd);
+            });
+        }
+    }
+
 
     // ---- static control wiring --------------------------------------
     $('consoleRun').addEventListener('click', () => {
@@ -819,6 +879,7 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
     wireConstructors();
     wireOps();
     wireComparisons();
+    wireArithmetic();
 </script>
 </body>
 </html>
