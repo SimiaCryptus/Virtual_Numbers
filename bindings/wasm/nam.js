@@ -79,6 +79,24 @@ export default async function loadNam(moduleFactory) {
             compare(other, maxDigits = 30) {
                 return raw.compare(other._raw, maxDigits);
             },
+            // Interval-honest arithmetic combiners. Each returns a fresh
+            // wrapped Number whose digit stream is produced honestly.
+            add(other) {
+                return wrap(raw.add(other._raw));
+            },
+            sub(other) {
+                return wrap(raw.sub(other._raw));
+            },
+            mul(other) {
+                return wrap(raw.mul(other._raw));
+            },
+            div(other) {
+                return wrap(raw.div(other._raw));
+            },
+            // Integer part of an arithmetic result (number | null pending).
+            integer_part() {
+                return raw.integer_part();
+            },
             to_string(digits) {
                 return raw.to_string(digits);
             },

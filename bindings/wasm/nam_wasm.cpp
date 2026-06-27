@@ -119,6 +119,21 @@ namespace {
         return std::string("<nam.Number base=") +
                std::to_string(n.base()) + " " + n.fork_cost() + ">";
     }
+    // ----- Arithmetic combiners (interval-honest +, -, *, /). -----
+    // Each returns a fresh Number whose digit stream is driven by an
+    // ArithStream over independent forks of the operands.
+    Number number_add(const Number &a, const Number &b) { return a + b; }
+    Number number_sub(const Number &a, const Number &b) { return a - b; }
+    Number number_mul(const Number &a, const Number &b) { return a * b; }
+    Number number_div(const Number &a, const Number &b) { return a / b; }
+    // Integer part of an arithmetic result (e.g. 0.6 + 0.7 -> 1). Returns
+    // null on honest pending. Marshalled as a JS number (values are small
+    // for the supported ops over fractional operands in [0,1)).
+    val number_integer_part(Number &n) {
+        auto ip = n.integer_part();
+        if (!ip.has_value()) return val::null();
+        return val(static_cast<double>(ip->to_i64()));
+    }
 
     // fork_cost() returns a const char*; embind cannot implicitly bind raw
     // pointers, so marshal it across the boundary as a std::string.
@@ -164,6 +179,12 @@ EMSCRIPTEN_BINDINGS (nam_module) {
             .function("agrees_with", &Number::agrees_with)
             .function("definitely_less_than", &number_definitely_less_than)
             .function("compare", &number_compare)
+            // Interval-honest arithmetic combiners.
+            .function("add", &number_add)
+            .function("sub", &number_sub)
+            .function("mul", &number_mul)
+            .function("div", &number_div)
+            .function("integer_part", &number_integer_part)
             // Rendering.
             .function("to_string", &Number::to_string)
             .function("repr", &number_repr);
