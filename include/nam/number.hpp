@@ -497,7 +497,7 @@ namespace nam {
             return true;
         }
 
-        // defini[[nodiscard]] tely_less_than: true / false / pending (nullopt).
+        // definitely_less_than: true / false / pending (nullopt).
         // Valid for MSB-first positional streams (rationals/reals), NOT for
         // LSB-up p-adics -- mirrors compare.hpp's documented restriction.
         [[nodiscard]] std::optional<bool> definitely_less_than(const Number &other,

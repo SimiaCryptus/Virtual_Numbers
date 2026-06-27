@@ -97,6 +97,30 @@ export default async function loadNam(moduleFactory) {
             integer_part() {
                 return raw.integer_part();
             },
+            // Tier / generator introspection. Strings cross the boundary so
+            // JS never depends on the C++ enum integer encoding.
+            tier() {
+                return raw.tier();
+            },
+            gen() {
+                return raw.gen();
+            },
+            // Series-tier complexity probe: live accumulator bit-width
+            // (0 for the constant-state automaton tier).
+            accumulator_bitwidth() {
+                return raw.accumulator_bitwidth();
+            },
+            // Frequency histogram over the first `n` emitted digits, as a
+            // plain JS Array of length == base. A pending stall yields a
+            // shorter effective count, never a fabricated entry.
+            digit_histogram(n) {
+                return raw.digit_histogram(n);
+            },
+            // Lossless JSON serialization (automaton tier). Series/arith
+            // tiers emit a partial, honestly-documented payload.
+            to_json() {
+                return raw.to_json();
+            },
             to_string(digits) {
                 return raw.to_string(digits);
             },
@@ -132,6 +156,12 @@ export default async function loadNam(moduleFactory) {
 
         current_precision() {
             return M.current_precision();
+        },
+        // Reconstruct an automaton-tier Number from a JSON string produced
+        // by Number.to_json(). Throws for series/arith payloads (they need
+        // external spec/operand context) -- honest about self-containment.
+        from_json(jsonString) {
+            return wrap(M.from_json(jsonString));
         },
     };
 }

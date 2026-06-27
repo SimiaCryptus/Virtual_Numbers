@@ -106,12 +106,12 @@ precision is provided by a vendored `nam::BigInt`, bounded integers by
 `nam::BoundedInt`, and the JIT by a function-pointer interpreter. Optional
 upgrades are gated behind CMake flags:
 
-| Flag                      | Effect                                           | Default |
- |---------------------------|--------------------------------------------------|---------|
-| `-DNAM_USE_GMP=ON`        | Use GMP `mpz_t` for the series tier accumulators | off     |
-| `-DNAM_BUILD_PYTHON=ON`   | Build the pybind11 user-layer bindings           | off     |
-| `-DNAM_BUILD_WASM=ON`     | Build the Emscripten/embind WebAssembly bindings | off     |
-| `-DNAM_SANITIZE=ON`       | ASan + UBSan on the test target                  | **on**  |
+| Flag                    | Effect                                           | Default |
+ |-------------------------|--------------------------------------------------|---------|
+| `-DNAM_USE_GMP=ON`      | Use GMP `mpz_t` for the series tier accumulators | off     |
+| `-DNAM_BUILD_PYTHON=ON` | Build the pybind11 user-layer bindings           | off     |
+| `-DNAM_BUILD_WASM=ON`   | Build the Emscripten/embind WebAssembly bindings | off     |
+| `-DNAM_SANITIZE=ON`     | ASan + UBSan on the test target                  | **on**  |
 
  ---
 

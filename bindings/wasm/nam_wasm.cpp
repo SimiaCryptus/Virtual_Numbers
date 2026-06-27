@@ -119,6 +119,55 @@ namespace {
         return std::string("<nam.Number base=") +
                std::to_string(n.base()) + " " + n.fork_cost() + ">";
     }
+
+    // ----- Tier / generator introspection (marshalled as strings so the
+    //       JS side never depends on enum integer encodings). -----
+    std::string number_tier(const Number &n) {
+        switch (n.tier()) {
+            case Number::Tier::Automaton: return "automaton";
+            case Number::Tier::Series: return "series";
+            case Number::Tier::Arith: return "arith";
+        }
+        return "unknown";
+    }
+
+    std::string number_gen(const Number &n) {
+        switch (n.gen()) {
+            case Number::Gen::Rational: return "rational";
+            case Number::Gen::Sqrt: return "sqrt";
+            case Number::Gen::PAdic: return "padic";
+        }
+        return "unknown";
+    }
+
+    // Series-tier complexity probe: live accumulator bit-width. 0 for the
+    // automaton tier (constant state) -- the honest "memory IS the metric".
+    int number_accumulator_bitwidth(const Number &n) {
+        return n.accumulator_bitwidth();
+    }
+
+    // Frequency histogram over the first `n` emitted digits, returned as a
+    // JS array (length == current base). A pending stall simply yields fewer
+    // counted digits -- never a fabricated count.
+    val number_digit_histogram(Number &n, int count) {
+        auto hist = n.digit_histogram(count);
+        val arr = val::array();
+        for (auto h: hist) arr.call<void>("push", static_cast<double>(h));
+        return arr;
+    }
+
+    // ----- JSON serialization (lossless for the automaton tier) -----
+    std::string number_to_json(const Number &n) {
+        return n.to_json_string();
+    }
+
+    // Reconstruct a Number from a JSON string. Throws (surfaced as a JS
+    // exception) for non-automaton payloads -- honest about what is
+    // self-contained.
+    Number number_from_json(const std::string &s) {
+        return Number::from_json_string(s);
+    }
+
     // ----- Arithmetic combiners (interval-honest +, -, *, /). -----
     // Each returns a fresh Number whose digit stream is driven by an
     // ArithStream over independent forks of the operands.
@@ -185,9 +234,19 @@ EMSCRIPTEN_BINDINGS (nam_module) {
             .function("mul", &number_mul)
             .function("div", &number_div)
             .function("integer_part", &number_integer_part)
+            // Tier / generator introspection.
+            .function("tier", &number_tier)
+            .function("gen", &number_gen)
+            .function("accumulator_bitwidth", &number_accumulator_bitwidth)
+            // Digit statistics.
+            .function("digit_histogram", &number_digit_histogram)
+            // Lossless (automaton) JSON serialization.
+            .function("to_json", &number_to_json)
             // Rendering.
             .function("to_string", &Number::to_string)
             .function("repr", &number_repr);
+    // ---- JSON reconstruction (automaton tier; throws otherwise) ----
+    function("from_json", &number_from_json);
 
     // ---- Ergonomic constructors (mpmath-flavoured free functions) ----
     function("rational", &Number::rational);

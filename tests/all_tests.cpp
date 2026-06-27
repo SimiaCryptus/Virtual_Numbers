@@ -199,7 +199,7 @@ NAM_TEST(codec_roundtrip_reproject) {
     // Read 12 base-10 digits, emit base-7 digits.
     const auto b7 = reproject_digits<Rational>(ns, src, 7, 12, 6);
     // 1/3 in base 7 = 0.222222... (since 1/3 = 2/7 + 2/49 + ...).
-    for (unsigned int i : b7)
+    for (unsigned int i: b7)
         CHECK(i == 2);
 }
 
@@ -863,7 +863,7 @@ NAM_TEST(bigint_json_roundtrip_lossless) {
 
 NAM_TEST(bigint_from_string) {
     CHECK(BigInt::from_string("123456789012345678901234567890")
-         == big_pow(BigInt(10), 28) * BigInt(12)
+        == big_pow(BigInt(10), 28) * BigInt(12)
         + BigInt::from_string("3456789012345678901234567890"));
     CHECK(BigInt::from_string("-42") == BigInt(-42));
 }

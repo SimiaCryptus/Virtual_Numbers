@@ -135,6 +135,7 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             opacity: 0.5;
             cursor: not-allowed;
         }
+
         /* ---- calculator display ---- */
         .display {
             background: #060810;
@@ -143,12 +144,14 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             padding: 14px 16px;
             margin-bottom: 14px;
         }
+
         .display .disp-label {
             color: var(--muted);
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.06em;
         }
+
         .display .disp-value {
             font-size: 22px;
             color: var(--ok);
@@ -156,12 +159,14 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             min-height: 28px;
             margin-top: 2px;
         }
+
         .display .disp-sub {
             color: var(--muted);
             font-size: 12px;
             margin-top: 4px;
             min-height: 16px;
         }
+
         /* ---- keypad ---- */
         .keypad {
             display: grid;
@@ -169,6 +174,7 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             gap: 6px;
             margin-top: 10px;
         }
+
         .keypad button {
             margin-top: 0;
             background: var(--keypad);
@@ -178,20 +184,25 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             padding: 12px 0;
             font-size: 16px;
         }
+
         .keypad button:hover {
             background: var(--keypad-hover);
         }
+
         .keypad button.op {
             color: var(--accent);
         }
+
         .keypad button.wide {
             grid-column: span 2;
         }
+
         .keypad button.act {
             background: var(--accent);
             color: #04121f;
             font-weight: 600;
         }
+
         .keypad button.danger {
             color: var(--err);
         }
@@ -225,6 +236,7 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             overflow: auto;
             font-size: 13px;
         }
+
         .reg-item {
             display: flex;
             justify-content: space-between;
@@ -234,9 +246,11 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             cursor: pointer;
             border-bottom: 1px solid var(--border);
         }
+
         .reg-item:hover {
             background: var(--keypad-hover);
         }
+
         .reg-item .reg-val {
             color: var(--fg);
             opacity: 0.8;
@@ -245,12 +259,14 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             white-space: nowrap;
             max-width: 60%;
         }
+
         .reg-item .reg-drop {
             color: var(--err);
             opacity: 0;
             font-weight: 700;
             padding: 0 4px;
         }
+
         .reg-item:hover .reg-drop {
             opacity: 0.8;
         }
@@ -323,10 +339,12 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             padding: 1px 9px;
             color: var(--accent);
         }
+
         /* clickable target hint */
         .target-active {
             outline: 2px solid var(--accent);
         }
+
         .hint {
             color: var(--muted);
             font-size: 11px;
@@ -483,6 +501,13 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
                 <button data-op="streaming">streaming</button>
                 <button data-op="cached">cached N</button>
             </div>
+            <div class="row">
+                <button data-op="tier">tier</button>
+                <button data-op="gen">gen</button>
+                <button data-op="bitwidth">bitwidth</button>
+                <button data-op="histogram">histogram N</button>
+                <button data-op="tojson">to_json</button>
+            </div>
         </fieldset>
 
         <h2>Honest comparison</h2>
@@ -588,6 +613,7 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
         updateDisplay();
         return num;
     }
+
     function setTarget(name) {
         targetReg = name;
         targetLabel.textContent = name;
@@ -595,6 +621,7 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
         updateDisplay();
         refreshVars();
     }
+
     function updateDisplay() {
         const t = regs[targetReg] || regs['_'];
         if (!t) {
@@ -813,6 +840,40 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
                 const num = lookup(rawArgs[0]);
                 return `base ${num.base()}`;
             }
+            case 'tier': {
+                const num = lookup(rawArgs[0]);
+                return `tier: ${num.tier()}`;
+            }
+            case 'gen': {
+                const num = lookup(rawArgs[0]);
+                return `generator: ${num.gen()}`;
+            }
+            case 'bitwidth': {
+                const num = lookup(rawArgs[0]);
+                return `accumulator bit-width: ${num.accumulator_bitwidth()}`;
+            }
+            case 'histogram': {
+                const num = lookup(rawArgs[0]);
+                const n = rawArgs[1] !== undefined
+                    ? asInt(rawArgs[1], 'N') : 30;
+                const hist = num.digit_histogram(n);
+                return hist
+                    .map((c, d) => `${d}:${c}`)
+                    .join('  ');
+            }
+            case 'tojson': {
+                const num = lookup(rawArgs[0]);
+                return num.to_json();
+            }
+            case 'fromjson': {
+                const {store, rest} = extractStore(rawArgs);
+                // Re-join the remaining tokens: JSON has no spaces from
+                // dump(), but be defensive in case of manual paste.
+                const payload = rest.join(' ');
+                const o = setLast(nam.from_json(payload));
+                if (store) regs[store] = o;
+                return (store ? `${store} := ` : '') + o.toString();
+            }
             case 'in_base': {
                 const {store, rest} = extractStore(rawArgs);
                 const num = lookup(rest[0]);
@@ -895,8 +956,8 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
                 // (e.g. rational 4 1) stream as 0.000..., so a combination
                 // involving them is NOT meaningful. Surface this honestly.
                 log(escapeHtml('note: arithmetic is fractional-only ' +
-                    '(operands in [0,1)); integer/improper operands stream ' +
-                    'as 0.000... and yield meaningless results.'),
+                        '(operands in [0,1)); integer/improper operands stream ' +
+                        'as 0.000... and yield meaningless results.'),
                     'log-pending');
                 const o = setLast(a[cmd](b));
                 if (store) regs[store] = o;
@@ -997,6 +1058,21 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
                     case 'cached':
                         cmd = `cached ${reg} ${n}${store}`;
                         break;
+                    case 'tier':
+                        cmd = `tier ${reg}`;
+                        break;
+                    case 'gen':
+                        cmd = `gen ${reg}`;
+                        break;
+                    case 'bitwidth':
+                        cmd = `bitwidth ${reg}`;
+                        break;
+                    case 'histogram':
+                        cmd = `histogram ${reg} ${n}`;
+                        break;
+                    case 'tojson':
+                        cmd = `tojson ${reg}`;
+                        break;
                 }
                 runCommand(cmd);
             });
@@ -1014,6 +1090,7 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             });
         }
     }
+
     // ---- keypad: standard-calculator-style mouse interactions -------
     function wireKeypad() {
         // digit keys append to the N field
@@ -1069,6 +1146,7 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             setTarget(v);
         });
     }
+
     function wireArithmetic() {
         for (const btn of document.querySelectorAll('[data-arith]')) {
             btn.addEventListener('click', () => {

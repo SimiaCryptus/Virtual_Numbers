@@ -107,7 +107,7 @@ emission time, so the same value reprojects cleanly into any base.
 | Hidden state                      | —                   | —                                   | Global precision       | Global context          | —                                        | **None (scoped, explicit)**                   |
 | Base handling                     | Binary only         | Binary internal                     | Binary internal        | Decimal only            | Binary internal                          | **Base = codec, any base**                    |
 | Runtime expression specialization | —                   | —                                   | —                      | —                       | —                                        | **JIT to one NumVMFn**                        |
-| External deps                     | None                | libgmp / mpfr                       | Python+SymPy           | Python stdlib           | Heavy runtime                            | **Zero by default; GMP optional**        |
+| External deps                     | None                | libgmp / mpfr                       | Python+SymPy           | Python stdlib           | Heavy runtime                            | **Zero by default; GMP optional**             |
 
 **Versus GMP/MPFR.** Those give you fast fixed-precision big arithmetic, but
 you still pick precision up front and pay full deep-copy on every branch.
