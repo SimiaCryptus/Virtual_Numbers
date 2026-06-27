@@ -82,6 +82,7 @@ used here are standard textbook results:
   Mercator's *Logarithmotechnia*). The tail satisfies
   `Σ_{k>n} 1/(k·2^k) ≤ Σ_{k>n} 1/2^k = 1/2^n`, giving
   `err = den/2^n = n!`.
+
 - **Catalan's constant** `G = Σ_{k≥0} (−1)^k/(2k+1)^2`. This is a slowly
   (linearly) convergent alternating series whose truncation error, by the
   alternating series (Leibniz) test, is bounded by the first omitted term:

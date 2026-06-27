@@ -6,6 +6,12 @@
 //         cmake --build build-wasm
 // Run:    node bindings/wasm/example.js   (from the build output dir)
 'use strict';
+// For an interactive REPL over the same library facilities, run
+// `node bindings/wasm/calculator.js` (from the build output dir) and type
+// `help` at the prompt.
+// For an in-browser GUI calculator over the same facilities, open
+// calculator.html from the build output dir (served over HTTP so the
+// .wasm can be fetched), e.g. `python3 -m http.server`.
 // For an in-browser visual demo of the p-adic ultrametric fractal, open
 // padic_fractal.html from the build output dir (served over HTTP so the
 // .wasm can be fetched), e.g. `python3 -m http.server`.

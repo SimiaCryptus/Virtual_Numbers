@@ -46,6 +46,12 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/example.js
         ${CMAKE_CURRENT_BINARY_DIR}/example.js COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_nam_wasm.js
         ${CMAKE_CURRENT_BINARY_DIR}/test_nam_wasm.js COPYONLY)
+# Copy the in-browser GUI artifacts (interactive calculator + p-adic
+# fractal demo) so they can be served directly from the build output dir.
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/calculator.html
+         ${CMAKE_CURRENT_BINARY_DIR}/calculator.html COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/padic_fractal.html
+         ${CMAKE_CURRENT_BINARY_DIR}/padic_fractal.html COPYONLY)
 
 # Register the Node smoke test with ctest when a node interpreter is found.
 find_program(NODE_EXECUTABLE NAMES node nodejs)
