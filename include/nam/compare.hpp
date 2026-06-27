@@ -11,16 +11,13 @@
 #include "abi.h"
 #include "generator.hpp"
 
-namespace nam
-{
+namespace nam {
     enum class Trit { Less, Greater, Indistinguishable };
 
     // agrees_with: exact for a finite prefix of `digits` digits.
-    template <Generator G>
-    bool agrees_with(AutomatonVM x, AutomatonVM y, int digits)
-    {
-        for (int i = 0; i < digits; ++i)
-        {
+    template<Generator G>
+    bool agrees_with(AutomatonVM x, AutomatonVM y, int digits) {
+        for (int i = 0; i < digits; ++i) {
             NumVMStep rx = G::step(x);
             NumVMStep ry = G::step(y);
             if (rx.digit != ry.digit) return false;
@@ -37,12 +34,10 @@ namespace nam
     //
     // NOTE: this is for *most-significant-first* digit streams (reals/rationals
     // in a positional base). It is NOT valid for LSB-up p-adic streams.
-    template <Generator G>
+    template<Generator G>
     std::optional<bool> definitely_less_than(AutomatonVM x, AutomatonVM y,
-                                             int max_digits)
-    {
-        for (int i = 0; i < max_digits; ++i)
-        {
+                                             int max_digits) {
+        for (int i = 0; i < max_digits; ++i) {
             NumVMStep rx = G::step(x);
             NumVMStep ry = G::step(y);
             if (rx.digit < ry.digit) return true;
@@ -53,9 +48,8 @@ namespace nam
         return std::nullopt; // pending -- never a false definite answer
     }
 
-    template <Generator G>
-    Trit compare(AutomatonVM x, AutomatonVM y, int max_digits)
-    {
+    template<Generator G>
+    Trit compare(AutomatonVM x, AutomatonVM y, int max_digits) {
         auto r = definitely_less_than<G>(x, y, max_digits);
         if (!r.has_value()) return Trit::Indistinguishable;
         return *r ? Trit::Less : Trit::Greater;
@@ -67,12 +61,10 @@ namespace nam
     // positional (reals/rationals) streams of the same base. Returns the
     // index of the first differing digit alongside the verdict, which callers
     // can use to bound how much precision was consumed.
-    template <Generator GX, Generator GY>
+    template<Generator GX, Generator GY>
     std::optional<bool> definitely_less_than_xy(AutomatonVM x, AutomatonVM y,
-                                                int max_digits)
-    {
-        for (int i = 0; i < max_digits; ++i)
-        {
+                                                int max_digits) {
+        for (int i = 0; i < max_digits; ++i) {
             NumVMStep rx = GX::step(x);
             NumVMStep ry = GY::step(y);
             if (rx.digit < ry.digit) return true;

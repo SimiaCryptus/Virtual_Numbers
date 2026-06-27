@@ -18,17 +18,14 @@
 #include "abi.h"
 #include "generator.hpp"
 
-namespace nam
-{
+namespace nam {
     // Returns the valuation v_p(x - y): the LSB-up index of the first differing
     // digit, scanning up to max_digits. nullopt means "agree on the whole
     // prefix" (distance is < p^{-max_digits}; we honestly report pending).
-    template <Generator G>
+    template<Generator G>
     std::optional<int> padic_valuation_of_difference(AutomatonVM x, AutomatonVM y,
-                                                     int max_digits)
-    {
-        for (int i = 0; i < max_digits; ++i)
-        {
+                                                     int max_digits) {
+        for (int i = 0; i < max_digits; ++i) {
             NumVMStep rx = G::step(x);
             NumVMStep ry = G::step(y);
             if (rx.digit != ry.digit) return i;
@@ -40,10 +37,9 @@ namespace nam
 
     // p-adic distance p^{-v}. Returns nullopt if the prefix fully agrees within
     // max_digits (distance smaller than resolvable bound).
-    template <Generator G>
+    template<Generator G>
     std::optional<double> padic_distance(AutomatonVM x, AutomatonVM y,
-                                         int max_digits)
-    {
+                                         int max_digits) {
         auto v = padic_valuation_of_difference<G>(x, y, max_digits);
         if (!v.has_value()) return std::nullopt;
         double p = static_cast<double>(x.base);

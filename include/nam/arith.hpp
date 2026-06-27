@@ -132,7 +132,8 @@ namespace nam {
         bool refine_x() {
             auto d = x_();
             if (!d.has_value()) return false;
-            if (*d == 0) ++x_zero_run_; else x_zero_run_ = 0;
+            if (*d == 0) ++x_zero_run_;
+            else x_zero_run_ = 0;
             BigInt B(static_cast<int64_t>(base_));
             // new lo = lo*base + d ; den *= base ; hi = lo + 1.
             xlo_ = xlo_ * B + BigInt(static_cast<int64_t>(*d));
@@ -146,7 +147,8 @@ namespace nam {
         bool refine_y() {
             auto d = y_();
             if (!d.has_value()) return false;
-            if (*d == 0) ++y_zero_run_; else y_zero_run_ = 0;
+            if (*d == 0) ++y_zero_run_;
+            else y_zero_run_ = 0;
             BigInt B(static_cast<int64_t>(base_));
             ylo_ = ylo_ * B + BigInt(static_cast<int64_t>(*d));
             yden_ = yden_ * B;
@@ -155,6 +157,7 @@ namespace nam {
             ++refine_count_;
             return true;
         }
+
         // True when an operand has emitted a long run of zeros: it is (almost
         // certainly) a terminating value and refining further only inflates
         // the denominator without narrowing the *result* interval enough to
@@ -417,6 +420,7 @@ namespace nam {
                 rhi_ = BigInt::divmod(rhi_, g, r);
             }
         }
+
         // Strip shared power-of-`base` factors from an operand interval
         // [lo/den, hi/den] (hi == lo+1 invariant relaxed: we keep hi=lo+?
         // by reducing all three together only when *all* are divisible).

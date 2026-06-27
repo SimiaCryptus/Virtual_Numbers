@@ -12,38 +12,30 @@
 #include <vector>
 #include <functional>
 
-namespace namtest
-{
-    struct Case
-    {
+namespace namtest {
+    struct Case {
         std::string name;
         std::function<void()> fn;
     };
 
-    inline std::vector<Case>& registry()
-    {
+    inline std::vector<Case> &registry() {
         static std::vector<Case> r;
         return r;
     }
 
-    inline int& failures()
-    {
+    inline int &failures() {
         static int f = 0;
         return f;
     }
 
-    struct Reg
-    {
-        Reg(const char* n, std::function<void()> f)
-        {
+    struct Reg {
+        Reg(const char *n, std::function<void()> f) {
             registry().push_back({n, std::move(f)});
         }
     };
 
-    inline void check(bool cond, const char* expr, const char* file, int line)
-    {
-        if (!cond)
-        {
+    inline void check(bool cond, const char *expr, const char *file, int line) {
+        if (!cond) {
             std::printf("  FAIL: %s  (%s:%d)\n", expr, file, line);
             ++failures();
         }

@@ -25,13 +25,11 @@
 #include "generator.hpp"
 #include "rational.hpp"
 
-namespace nam
-{
+namespace nam {
     // Analytic reprojection for rationals: a rational keeps its identity under a
     // base change; we simply rebuild the VM with the new codec. This is the
     // cleanest demonstration that "base is a codec".
-    inline AutomatonVM rational_in_base(AutomatonVM rat, uint32_t new_base)
-    {
+    inline AutomatonVM rational_in_base(AutomatonVM rat, uint32_t new_base) {
         // state[2] = p, state[1] = q  (as seeded by make_rational)
         return make_rational(rat.state[2], rat.state[1], new_base);
     }
@@ -43,18 +41,16 @@ namespace nam
     // faithful streaming reprojection needs a growing rational accumulator,
     // which is a Phase-2 (series-tier) concern. For Phase 1 we expose it as a
     // bounded host helper used in tests and by the rational fast path above.
-    template <Generator G>
+    template<Generator G>
     std::vector<uint32_t> reproject_digits(AutomatonVM src, uint32_t target_base,
-                                           int src_digits, int out_digits)
-    {
+                                           int src_digits, int out_digits) {
         // Read src_digits of the source value into an exact rational fraction
         // num/den where den = src.base^src_digits.
         // num/den is an exact lower bound on the value (it ignores the tail).
         uint64_t num = 0;
         uint64_t den = 1;
         AutomatonVM s = src;
-        for (int i = 0; i < src_digits; ++i)
-        {
+        for (int i = 0; i < src_digits; ++i) {
             NumVMStep r = G::step(s);
             num = num * src.base + r.digit;
             den = den * src.base;
@@ -65,8 +61,7 @@ namespace nam
         std::vector<uint32_t> out;
         out.reserve(out_digits);
         AutomatonVM rv = make_rational(num, den, target_base);
-        for (int i = 0; i < out_digits; ++i)
-        {
+        for (int i = 0; i < out_digits; ++i) {
             NumVMStep r = Rational::step(rv);
             out.push_back(r.digit);
             rv = r.next;

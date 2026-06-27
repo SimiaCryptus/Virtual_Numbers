@@ -18,22 +18,18 @@
 #include "abi.h"
 #include "generator.hpp"
 
-namespace nam
-{
+namespace nam {
     // Layout of AutomatonVM for a Rational:
     //   base    : codec (digit alphabet size)
     //   phase   : digit index (informational; not required for stepping)
     //   state[0]: running remainder r, with 0 <= r < q
     //   state[1]: denominator q
     //   state[2]: numerator p (only meaningful at construction; preserved)
-    struct Rational
-    {
-        static constexpr NumVMStep step(AutomatonVM s)
-        {
+    struct Rational {
+        static constexpr NumVMStep step(AutomatonVM s) {
             uint64_t q = s.state[1];
             uint64_t r = s.state[0];
-            if (q == 0)
-            {
+            if (q == 0) {
                 // Terminating / degenerate denominator: emit zeros.
                 AutomatonVM next = s;
                 next.phase = s.phase + 1;
@@ -57,8 +53,7 @@ namespace nam
     // Construct a fractional-part rational generator for (p mod q) / q in base b.
     // The integer part is dropped; this emits the digits to the right of the
     // radix point. (Phase 1 focuses on fractional digit streams.)
-    inline AutomatonVM make_rational(uint64_t p, uint64_t q, uint32_t base)
-    {
+    inline AutomatonVM make_rational(uint64_t p, uint64_t q, uint32_t base) {
         AutomatonVM vm{};
         vm.base = base;
         vm.phase = 0;
@@ -70,21 +65,16 @@ namespace nam
 
     // Period detection: walk the remainder sequence until a remainder repeats.
     // Returns {preperiod_length, period_length}. Period 0 means terminating.
-    inline std::pair<uint64_t, uint64_t> rational_period(AutomatonVM vm)
-    {
-        std::vector<std::pair<uint64_t, uint64_t>> seen; // (remainder, index)
+    inline std::pair<uint64_t, uint64_t> rational_period(AutomatonVM vm) {
+        std::vector<std::pair<uint64_t, uint64_t> > seen; // (remainder, index)
         uint64_t idx = 0;
-        while (true)
-        {
+        while (true) {
             uint64_t r = vm.state[0];
-            if (r == 0)
-            {
+            if (r == 0) {
                 return {idx, 0}; // terminating expansion
             }
-            for (auto& [rr, i] : seen)
-            {
-                if (rr == r)
-                {
+            for (auto &[rr, i]: seen) {
+                if (rr == r) {
                     return {i, idx - i}; // preperiod, period
                 }
             }

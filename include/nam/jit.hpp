@@ -49,23 +49,19 @@
 #include "llvm/Support/TargetSelect.h"
 #endif
 
-namespace nam
-{
+namespace nam {
     // Compile-time switch for JIT debug tracing. Define NAM_JIT_DEBUG to 1
     // (e.g. -DNAM_JIT_DEBUG=1) to emit a printf of the resolved generator
     // tag and the chosen interpreter/JIT slot inside compile().
 #ifndef NAM_JIT_DEBUG
 #define NAM_JIT_DEBUG 1
 #endif
-    namespace detail
-    {
-        inline const char* gen_tag_name(GenTag g)
-        {
-            switch (g)
-            {
-            case GenTag::Rational: return "Rational";
-            case GenTag::Sqrt: return "Sqrt";
-            case GenTag::PAdic: return "PAdic";
+    namespace detail {
+        inline const char *gen_tag_name(GenTag g) {
+            switch (g) {
+                case GenTag::Rational: return "Rational";
+                case GenTag::Sqrt: return "Sqrt";
+                case GenTag::PAdic: return "PAdic";
             }
             return "Unknown";
         }
@@ -74,14 +70,17 @@ namespace nam
     // A compiled step function plus ownership of whatever backend resources
     // back it (a JIT session, or an interpreter slot). Move-only: the raw
     // NumVMFn it exposes is valid for the lifetime of this handle.
-    class CompiledFn
-    {
+    class CompiledFn {
     public:
         CompiledFn() = default;
-        CompiledFn(const CompiledFn&) = delete;
-        CompiledFn& operator=(const CompiledFn&) = delete;
-        CompiledFn(CompiledFn&&) = default;
-        CompiledFn& operator=(CompiledFn&&) = default;
+
+        CompiledFn(const CompiledFn &) = delete;
+
+        CompiledFn &operator=(const CompiledFn &) = delete;
+
+        CompiledFn(CompiledFn &&) = default;
+
+        CompiledFn &operator=(CompiledFn &&) = default;
 
         // The C-ABI step function. Same signature as the static path.
         NumVMFn fn() const { return fn_; }
@@ -93,7 +92,7 @@ namespace nam
         bool is_native() const { return native_; }
 
     private:
-        friend CompiledFn compile(const Expr&);
+        friend CompiledFn compile(const Expr &);
 
         NumVMFn fn_ = nullptr;
         bool native_ = false;
@@ -101,37 +100,31 @@ namespace nam
     };
 
     // ----- Interpreter backend (default, no LLVM) -----
-    namespace detail
-    {
+    namespace detail {
         // The interpreter dispatches the resolved generator. Because a raw
         // C function pointer carries no captured state, we register the
         // ResolvedGen in a small thread-safe table and expose one stable
         // trampoline per slot. The trampoline recovers its slot from a
         // table indexed by a compile-time-fixed function identity.
-        struct InterpSlot
-        {
+        struct InterpSlot {
             ResolvedGen rg;
         };
 
-        inline std::vector<std::shared_ptr<InterpSlot>>& interp_table()
-        {
-            static std::vector<std::shared_ptr<InterpSlot>> t;
+        inline std::vector<std::shared_ptr<InterpSlot> > &interp_table() {
+            static std::vector<std::shared_ptr<InterpSlot> > t;
             return t;
         }
 
-        inline std::mutex& interp_mutex()
-        {
+        inline std::mutex &interp_mutex() {
             static std::mutex m;
             return m;
         }
 
-        inline NumVMStep dispatch(const ResolvedGen& rg, AutomatonVM s)
-        {
-            switch (rg.gen)
-            {
-            case GenTag::Rational: return Rational::step(s);
-            case GenTag::Sqrt: return Sqrt::step(s);
-            case GenTag::PAdic: return PAdic::step(s);
+        inline NumVMStep dispatch(const ResolvedGen &rg, AutomatonVM s) {
+            switch (rg.gen) {
+                case GenTag::Rational: return Rational::step(s);
+                case GenTag::Sqrt: return Sqrt::step(s);
+                case GenTag::PAdic: return PAdic::step(s);
             }
             return Rational::step(s);
         }
@@ -140,13 +133,12 @@ namespace nam
         // the table. We generate a handful at compile time via templates;
         // the pool size bounds the number of simultaneously-live compiled
         // interpreters (ample for tests and typical use).
-        template <size_t N>
-        NumVMStep interp_trampoline(AutomatonVM s)
-        {
+        template<size_t N>
+        NumVMStep interp_trampoline(AutomatonVM s) {
             std::shared_ptr<InterpSlot> slot;
             {
                 std::lock_guard<std::mutex> lk(interp_mutex());
-                auto& t = interp_table();
+                auto &t = interp_table();
                 if (N >= t.size() || !t[N]) return dispatch(ResolvedGen{}, s);
                 slot = t[N];
             }
@@ -155,46 +147,39 @@ namespace nam
 
         constexpr size_t kInterpPool = 64;
 
-        template <size_t... Is>
+        template<size_t... Is>
         constexpr std::array<NumVMFn, sizeof...(Is)>
-        make_pool(std::index_sequence<Is...>)
-        {
+        make_pool(std::index_sequence<Is...>) {
             return {{&interp_trampoline<Is>...}};
         }
 
-        inline const std::array<NumVMFn, kInterpPool>& interp_pool()
-        {
+        inline const std::array<NumVMFn, kInterpPool> &interp_pool() {
             static const std::array<NumVMFn, kInterpPool> pool =
-                make_pool(std::make_index_sequence<kInterpPool>{});
+                    make_pool(std::make_index_sequence<kInterpPool>{});
             return pool;
         }
 
         // Owner that frees its table slot on destruction (FIFO reuse is
         // not attempted; the pool is fixed-size and bounded).
-        struct InterpOwner
-        {
+        struct InterpOwner {
             size_t slot;
         };
     } // namespace detail
 
 #if NAM_USE_LLVM_JIT
-    namespace detail
-    {
+    namespace detail {
         // RAII owner of an LLJIT session keeping the emitted code resident.
-        struct JitOwner
-        {
+        struct JitOwner {
             std::unique_ptr<llvm::orc::LLJIT> jit;
         };
 
-        inline void ensure_llvm_inited()
-        {
-            static const bool once = []
-            {
+        inline void ensure_llvm_inited() {
+            static const bool once = [] {
                 llvm::InitializeNativeTarget();
                 llvm::InitializeNativeTargetAsmPrinter();
                 return true;
             }();
-            (void)once;
+            (void) once;
         }
     } // namespace detail
 #endif
@@ -205,8 +190,7 @@ namespace nam
     // produces a NumVMFn. With LLVM it emits a specialized step; otherwise
     // it binds an interpreter trampoline. Either way the returned fn() is a
     // real C-ABI NumVMFn the rest of the library can call.
-    inline CompiledFn compile(const Expr& expr)
-    {
+    inline CompiledFn compile(const Expr &expr) {
         ResolvedGen rg = resolve_expr(expr);
         CompiledFn out;
 
@@ -223,17 +207,16 @@ namespace nam
         // target -- the whole point of compile(expr_tree) -> NumVMFn.
         detail::ensure_llvm_inited();
         NumVMFn kernel = nullptr;
-        switch (rg.gen)
-        {
-        case GenTag::Rational:
-            kernel = +[](AutomatonVM s) { return Rational::step(s); };
-            break;
-        case GenTag::Sqrt:
-            kernel = +[](AutomatonVM s) { return Sqrt::step(s); };
-            break;
-        case GenTag::PAdic:
-            kernel = +[](AutomatonVM s) { return PAdic::step(s); };
-            break;
+        switch (rg.gen) {
+            case GenTag::Rational:
+                kernel = +[](AutomatonVM s) { return Rational::step(s); };
+                break;
+            case GenTag::Sqrt:
+                kernel = +[](AutomatonVM s) { return Sqrt::step(s); };
+                break;
+            case GenTag::PAdic:
+                kernel = +[](AutomatonVM s) { return PAdic::step(s); };
+                break;
         }
 #if NAM_JIT_DEBUG
         std::fprintf(stderr,
@@ -247,13 +230,11 @@ namespace nam
 #else
         // Interpreter backend: bind a stable trampoline to a table slot.
         std::lock_guard<std::mutex> lk(detail::interp_mutex());
-        auto& table = detail::interp_table();
+        auto &table = detail::interp_table();
         // Find a free slot (null) or grow within the pool bound.
         size_t slot = table.size();
-        for (size_t i = 0; i < table.size(); ++i)
-        {
-            if (!table[i])
-            {
+        for (size_t i = 0; i < table.size(); ++i) {
+            if (!table[i]) {
                 slot = i;
                 break;
             }
@@ -275,10 +256,9 @@ namespace nam
 
         // Owner releases the slot on destruction.
         auto guard = std::shared_ptr<detail::InterpOwner>(
-            new detail::InterpOwner{slot}, [](detail::InterpOwner* o)
-            {
+            new detail::InterpOwner{slot}, [](detail::InterpOwner *o) {
                 std::lock_guard<std::mutex> lk2(detail::interp_mutex());
-                auto& t = detail::interp_table();
+                auto &t = detail::interp_table();
                 if (o->slot < t.size()) t[o->slot].reset();
                 delete o;
             });

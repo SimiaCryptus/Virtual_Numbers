@@ -28,8 +28,7 @@
 #include "big_int.hpp"
 #include "series.hpp"
 
-namespace nam
-{
+namespace nam {
     // --- e = sum_{k>=0} 1/k! ---
     //
     // We keep den = N! for the current number of terms N (index). When we add
@@ -43,16 +42,13 @@ namespace nam
     //   new denominator = (n+1)! ... but we add the term for k=n: 1/n!.
     //   Represent over den' = n! : multiply existing num by n (since
     //   n!/(n-1)! = n) then add (n!/n!)=1. Keep den' = n!.
-    inline std::shared_ptr<const SeriesSpec> e_spec()
-    {
+    inline std::shared_ptr<const SeriesSpec> e_spec() {
         auto spec = std::make_shared<SeriesSpec>();
         spec->name = "e";
-        spec->advance = [](uint64_t n, BigInt& num, BigInt& den)
-        {
+        spec->advance = [](uint64_t n, BigInt &num, BigInt &den) {
             // State invariant on entry: den = n! and num = n! * sum_{k<n} 1/k!
             // (for n==0: den=1, num=0).
-            if (n == 0)
-            {
+            if (n == 0) {
                 // add term k=0 = 1: num = 1, den = 1 (0! = 1)
                 num = BigInt(1);
                 den = BigInt(1);
@@ -65,8 +61,7 @@ namespace nam
             // Add term k=n = 1/n! -> add 1 to num over den=n!.
             num += BigInt(1);
         };
-        spec->tail_bound = [](uint64_t n, const BigInt& den)
-        {
+        spec->tail_bound = [](uint64_t n, const BigInt &den) {
             // After summing k=0..n-1 we are at index n with den=(n-1)! ... but
             // because advance leaves den = n! after processing index n-1 ->
             // we treat den as the current factorial. The tail
@@ -75,7 +70,7 @@ namespace nam
             // err such that |value - num/den| <= err/den, so err = 2 suffices
             // when den >= n! and the tail is < 2/den. Use a safe constant.
             if (n == 0) return BigInt(3); // crude bound before any terms
-            (void)den;
+            (void) den;
             return BigInt(2);
         };
         return spec;
@@ -88,12 +83,10 @@ namespace nam
     // and num accordingly won't be exact because of the 1/k factor. So we
     // keep den = lcm-ish growing factorial-of-2 times n. To preserve the
     // "den' is a multiple of den" invariant we use den = n! * 2^n.
-    inline std::shared_ptr<const SeriesSpec> ln2_spec()
-    {
+    inline std::shared_ptr<const SeriesSpec> ln2_spec() {
         auto spec = std::make_shared<SeriesSpec>();
         spec->name = "ln2";
-        spec->advance = [](uint64_t n, BigInt& num, BigInt& den)
-        {
+        spec->advance = [](uint64_t n, BigInt &num, BigInt &den) {
             // index n -> add term for k = n+1: 1/((n+1) 2^{n+1}).
             // Maintain den = (n)! * 2^n on entry (den=1 at n=0).
             uint64_t k = n + 1;
@@ -112,8 +105,7 @@ namespace nam
             num += term_num;
             den = newden;
         };
-        spec->tail_bound = [](uint64_t n, const BigInt& den)
-        {
+        spec->tail_bound = [](uint64_t n, const BigInt &den) {
             // tail = sum_{k>n} 1/(k 2^k) <= 1/(2^n).  Over den = n! 2^n the
             // bound err/den <= 1/2^n means err <= den / 2^n = n!. Return n!.
             if (n == 0) return BigInt(1);
@@ -126,14 +118,11 @@ namespace nam
     }
 
     // --- 1/e = sum_{k>=0} (-1)^k / k! ---
-    inline std::shared_ptr<const SeriesSpec> one_over_e_spec()
-    {
+    inline std::shared_ptr<const SeriesSpec> one_over_e_spec() {
         auto spec = std::make_shared<SeriesSpec>();
         spec->name = "1/e";
-        spec->advance = [](uint64_t n, BigInt& num, BigInt& den)
-        {
-            if (n == 0)
-            {
+        spec->advance = [](uint64_t n, BigInt &num, BigInt &den) {
+            if (n == 0) {
                 num = BigInt(1);
                 den = BigInt(1);
                 return;
@@ -145,29 +134,25 @@ namespace nam
             if (n % 2 == 0) num += BigInt(1);
             else num -= BigInt(1);
         };
-        spec->tail_bound = [](uint64_t n, const BigInt& den)
-        {
+        spec->tail_bound = [](uint64_t n, const BigInt &den) {
             // alternating, monotone: |tail| <= 1/n!  => err <= 1 over den=n!.
             if (n == 0) return BigInt(2);
-            (void)den;
+            (void) den;
             return BigInt(1);
         };
         return spec;
     }
 
     // Convenience builders.
-    inline SeriesVM make_e(uint32_t base = 10)
-    {
+    inline SeriesVM make_e(uint32_t base = 10) {
         return make_series(e_spec(), base);
     }
 
-    inline SeriesVM make_ln2(uint32_t base = 10)
-    {
+    inline SeriesVM make_ln2(uint32_t base = 10) {
         return make_series(ln2_spec(), base);
     }
 
-    inline SeriesVM make_one_over_e(uint32_t base = 10)
-    {
+    inline SeriesVM make_one_over_e(uint32_t base = 10) {
         return make_series(one_over_e_spec(), base);
     }
 
@@ -191,12 +176,10 @@ namespace nam
     // index k is  sign * 1 / ((2k+1) * m^{2k+1}). We rescale to a common
     // denominator den' = den * (2k+1) * m1^2 * m2^2 (a clean multiple of
     // den), keeping the exact-rescale invariant intact.
-    inline std::shared_ptr<const SeriesSpec> pi_quarter_spec()
-    {
+    inline std::shared_ptr<const SeriesSpec> pi_quarter_spec() {
         auto spec = std::make_shared<SeriesSpec>();
         spec->name = "pi/4";
-        spec->advance = [](uint64_t n, BigInt& num, BigInt& den)
-        {
+        spec->advance = [](uint64_t n, BigInt &num, BigInt &den) {
             // Add the k = n term of arctan(1/2) + arctan(1/3).
             // term_m(k) = (-1)^k / ((2k+1) * m^{2k+1}).
             const int64_t m1 = 2, m2 = 3;
@@ -210,8 +193,7 @@ namespace nam
             // To keep it incremental: on entry den holds the previous value;
             // multiply in the new factors.
             BigInt bodd = BigInt(static_cast<int64_t>(odd));
-            if (n == 0)
-            {
+            if (n == 0) {
                 // k=0: arctan = 1/m, so sum = 1/2 + 1/3 = 5/6.
                 num = BigInt(5);
                 den = BigInt(6);
@@ -231,20 +213,16 @@ namespace nam
             BigInt r;
             BigInt t1 = BigInt::divmod(newden, bodd * pow1, r);
             BigInt t2 = BigInt::divmod(newden, bodd * pow2, r);
-            if (k % 2 == 0)
-            {
+            if (k % 2 == 0) {
                 num += t1;
                 num += t2;
-            }
-            else
-            {
+            } else {
                 num -= t1;
                 num -= t2;
             }
             den = newden;
         };
-        spec->tail_bound = [](uint64_t n, const BigInt& den)
-        {
+        spec->tail_bound = [](uint64_t n, const BigInt &den) {
             // Both arctan series are alternating with terms bounded by the
             // first omitted term: |tail_m| <= 1/((2n+1) m^{2n+1}). For the
             // larger contribution (m=2) at index n this is < 1/2^{2n}. Over
@@ -258,8 +236,7 @@ namespace nam
         return spec;
     }
 
-    inline SeriesVM make_pi_quarter(uint32_t base = 10)
-    {
+    inline SeriesVM make_pi_quarter(uint32_t base = 10) {
         return make_series(pi_quarter_spec(), base);
     }
 
@@ -273,18 +250,15 @@ namespace nam
     // squared odd numbers (2j+1)^2 for j < n, preserving the exact-rescale
     // invariant (the new denominator is always an integer multiple of the
     // previous one).
-    inline std::shared_ptr<const SeriesSpec> catalan_spec()
-    {
+    inline std::shared_ptr<const SeriesSpec> catalan_spec() {
         auto spec = std::make_shared<SeriesSpec>();
         spec->name = "catalan";
-        spec->advance = [](uint64_t n, BigInt& num, BigInt& den)
-        {
+        spec->advance = [](uint64_t n, BigInt &num, BigInt &den) {
             // term k=n is (-1)^n / (2n+1)^2.
             uint64_t odd = 2 * n + 1;
             BigInt odd_sq = BigInt(static_cast<int64_t>(odd)) *
-                BigInt(static_cast<int64_t>(odd));
-            if (n == 0)
-            {
+                            BigInt(static_cast<int64_t>(odd));
+            if (n == 0) {
                 // k=0: 1/1 = 1.
                 num = BigInt(1);
                 den = BigInt(1);
@@ -305,12 +279,11 @@ namespace nam
                 std::fprintf(stderr,
                              "[catalan.advance] n=%llu odd=%llu sign=%c "
                              "num.bits=%d den.bits=%d\n",
-                             (unsigned long long)n, (unsigned long long)odd,
+                             (unsigned long long) n, (unsigned long long) odd,
                              (n % 2 == 0) ? '+' : '-',
                              num.bit_width(), den.bit_width());
         };
-        spec->tail_bound = [](uint64_t n, const BigInt& den)
-        {
+        spec->tail_bound = [](uint64_t n, const BigInt &den) {
             // Catalan's series is ALTERNATING, so the partial sum oscillates
             // around the true value: with `n` terms summed (k=0..n-1) the
             // true value lies on the side of num/den determined by the sign
@@ -338,7 +311,7 @@ namespace nam
             if (n == 0) return den; // crude bound before refinement
             uint64_t odd = 2 * n + 1;
             BigInt odd_sq = BigInt(static_cast<int64_t>(odd)) *
-                BigInt(static_cast<int64_t>(odd));
+                            BigInt(static_cast<int64_t>(odd));
             BigInt r;
             BigInt bound = BigInt::divmod(den, odd_sq, r);
             // Round UP whenever there is a nonzero remainder so the
@@ -354,15 +327,14 @@ namespace nam
                 std::fprintf(stderr,
                              "[catalan.tail] n=%llu odd=%llu bound.bits=%d "
                              "den.bits=%d returning 2*bound\n",
-                             (unsigned long long)n, (unsigned long long)odd,
+                             (unsigned long long) n, (unsigned long long) odd,
                              bound.bit_width(), den.bit_width());
             return bound + bound;
         };
         return spec;
     }
 
-    inline SeriesVM make_catalan(uint32_t base = 10)
-    {
+    inline SeriesVM make_catalan(uint32_t base = 10) {
         return make_series(catalan_spec(), base);
     }
 } // namespace nam

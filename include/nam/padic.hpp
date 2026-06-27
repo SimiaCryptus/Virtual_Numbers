@@ -25,17 +25,13 @@
 #include "abi.h"
 #include "generator.hpp"
 
-namespace nam
-{
-    namespace detail
-    {
+namespace nam {
+    namespace detail {
         // Modular inverse of b mod p (p prime, gcd(b,p)=1), via extended Euclid.
-        inline int64_t mod_inverse(int64_t b, int64_t p)
-        {
+        inline int64_t mod_inverse(int64_t b, int64_t p) {
             int64_t t = 0, newt = 1;
             int64_t r = p, newr = ((b % p) + p) % p;
-            while (newr != 0)
-            {
+            while (newr != 0) {
                 int64_t q = r / newr;
                 int64_t tmp = t - q * newt;
                 t = newt;
@@ -49,18 +45,15 @@ namespace nam
             return t;
         }
 
-        inline int64_t floordiv(int64_t a, int64_t b)
-        {
+        inline int64_t floordiv(int64_t a, int64_t b) {
             int64_t q = a / b;
             if ((a % b != 0) && ((a < 0) != (b < 0))) --q;
             return q;
         }
     } // namespace detail
 
-    struct PAdic
-    {
-        static NumVMStep step(AutomatonVM s)
-        {
+    struct PAdic {
+        static NumVMStep step(AutomatonVM s) {
             int64_t a = static_cast<int64_t>(s.state[0]);
             int64_t b = static_cast<int64_t>(s.state[1]);
             int64_t p = static_cast<int64_t>(s.base);
@@ -83,8 +76,7 @@ namespace nam
     static_assert(Generator<PAdic>);
 
     // Build the p-adic generator for a/b in Z_p. Requires gcd(b,p) == 1.
-    inline AutomatonVM make_padic(int64_t a, int64_t b, uint32_t p)
-    {
+    inline AutomatonVM make_padic(int64_t a, int64_t b, uint32_t p) {
         AutomatonVM vm{};
         vm.base = p;
         vm.phase = 0;
@@ -95,12 +87,10 @@ namespace nam
 
     // Valuation extractor (Section: Valuation Extractor). v_p(n) for an integer
     // n: the largest k with p^k | n. For a/b with gcd(b,p)=1 this is v_p(a).
-    inline int64_t p_valuation(int64_t n, int64_t p)
-    {
+    inline int64_t p_valuation(int64_t n, int64_t p) {
         if (n == 0) return -1; // conventionally +infinity; sentinel here
         int64_t v = 0;
-        while (n % p == 0)
-        {
+        while (n % p == 0) {
             n /= p;
             ++v;
         }
@@ -109,15 +99,12 @@ namespace nam
 
     // Period detection over the (a,b) state: since b is fixed and a is reduced,
     // the orbit is finite when |a| is bounded by |b|.
-    inline std::pair<uint64_t, uint64_t> padic_period(AutomatonVM vm)
-    {
-        std::vector<std::pair<int64_t, uint64_t>> seen;
+    inline std::pair<uint64_t, uint64_t> padic_period(AutomatonVM vm) {
+        std::vector<std::pair<int64_t, uint64_t> > seen;
         uint64_t idx = 0;
-        while (true)
-        {
+        while (true) {
             int64_t a = static_cast<int64_t>(vm.state[0]);
-            for (auto& [aa, i] : seen)
-            {
+            for (auto &[aa, i]: seen) {
                 if (aa == a) return {i, idx - i};
             }
             seen.emplace_back(a, idx);

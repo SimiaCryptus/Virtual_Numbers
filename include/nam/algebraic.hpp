@@ -29,17 +29,13 @@
 #include "generator.hpp"
 #include "bounded_int.hpp"
 
-namespace nam
-{
-    namespace detail
-    {
-        inline BoundedInt pack_get(const AutomatonVM& s)
-        {
+namespace nam {
+    namespace detail {
+        inline BoundedInt pack_get(const AutomatonVM &s) {
             return BoundedInt(s.state[1], s.state[0]);
         }
 
-        inline void pack_set(AutomatonVM& s, const BoundedInt& r)
-        {
+        inline void pack_set(AutomatonVM &s, const BoundedInt &r) {
             s.state[0] = r.lo;
             s.state[1] = r.hi;
         }
@@ -54,10 +50,8 @@ namespace nam
     // [0, b) such that (P*2*b + x) * x <= R*b^2 + 0, where P is the root prefix
     // built so far (as an integer scaled by powers of b) and R is the running
     // remainder.
-    struct Sqrt
-    {
-        static NumVMStep step(AutomatonVM s)
-        {
+    struct Sqrt {
+        static NumVMStep step(AutomatonVM s) {
             const uint64_t b = s.base;
             const uint64_t b2 = b * b;
 
@@ -71,8 +65,7 @@ namespace nam
             // Find largest x in [0, b) with (2*P*b + x) * x <= R.
             uint64_t base_term = 2ull * P * b;
             uint32_t best = 0;
-            for (uint64_t x = 1; x < b; ++x)
-            {
+            for (uint64_t x = 1; x < b; ++x) {
                 // candidate = (base_term + x) * x
                 BoundedInt cand = BoundedInt(base_term + x).mul_small(x);
                 if (cand <= R) best = static_cast<uint32_t>(x);
@@ -95,8 +88,7 @@ namespace nam
 
         // Diagnostic: bit-width of the accumulated root prefix register, used by
         // the complexity-metric instrumentation to assert O(log n) growth.
-        static int prefix_bitwidth(const AutomatonVM& s)
-        {
+        static int prefix_bitwidth(const AutomatonVM &s) {
             return BoundedInt(s.state[2]).bit_width();
         }
     };
@@ -107,8 +99,7 @@ namespace nam
     // D must be a non-perfect-square positive integer. The integer part is
     // computed and used to seed the remainder; emitted digits are the
     // fractional expansion.
-    inline AutomatonVM make_sqrt(uint64_t D, uint32_t base)
-    {
+    inline AutomatonVM make_sqrt(uint64_t D, uint32_t base) {
         // Integer sqrt of D.
         uint64_t root = 0;
         while ((root + 1) * (root + 1) <= D) ++root;
@@ -140,8 +131,7 @@ namespace nam
     // sqrt(c^2 * D) = c*sqrt(D) by seeding the long-hand recurrence with the
     // scaled radicand. This lets callers express, e.g., 2*sqrt(2) = sqrt(8)
     // without a separate codec-level multiply.
-    inline AutomatonVM make_scaled_sqrt(uint64_t c, uint64_t D, uint32_t base)
-    {
+    inline AutomatonVM make_scaled_sqrt(uint64_t c, uint64_t D, uint32_t base) {
         return make_sqrt(c * c * D, base);
     }
 } // namespace nam

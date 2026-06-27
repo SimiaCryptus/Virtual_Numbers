@@ -27,8 +27,7 @@
 
 #include "big_int.hpp"
 
-namespace nam
-{
+namespace nam {
     // ---- Series specification (immutable, safe to alias / share) ----
     //
     // A SeriesSpec describes how to advance a partial-sum accumulator and how
@@ -38,8 +37,7 @@ namespace nam
     // We accumulate the partial sum S_n as an exact rational num/den. The
     // step advances index -> index+1, updating (num, den). The tail oracle
     // returns err such that |value - num/den| <= err/den.
-    struct SeriesSpec
-    {
+    struct SeriesSpec {
         // Advance: given index n and current (num, den), produce next
         // (num, den) representing S_{n+1}. Implementations keep den as a
         // running common denominator.
@@ -54,7 +52,7 @@ namespace nam
         tail_bound;
 
         // Human-readable name for diagnostics / golden tests.
-        const char* name = "series";
+        const char *name = "series";
     };
 
     // ---- Series VM: mutable accumulators, explicit deep-copy fork ----
@@ -63,8 +61,7 @@ namespace nam
     // immutable spec pointer + mutable accumulators. We use a shared_ptr for
     // the immutable spec (safe to alias) and value BigInts for the mutable
     // accumulators (deep-copied on fork).
-    struct SeriesVM
-    {
+    struct SeriesVM {
         uint32_t base = 10;
         uint64_t index = 0; // number of terms accumulated
         std::shared_ptr<const SeriesSpec> spec;
@@ -74,8 +71,7 @@ namespace nam
         // Fork: explicit DEEP COPY of accumulators. The spec is shared
         // (immutable). This is O(size of accumulators) == O(log n) in depth,
         // exactly as documented in THEORY.md. NOT copy-on-write.
-        SeriesVM fork() const
-        {
+        SeriesVM fork() const {
             SeriesVM c;
             c.base = base;
             c.index = index;
@@ -86,8 +82,7 @@ namespace nam
         }
 
         // Advance one term.
-        void step_term()
-        {
+        void step_term() {
             spec->advance(index, num, den);
             ++index;
         }
@@ -97,8 +92,7 @@ namespace nam
 
         // Total live accumulator bit-width: the complexity metric for the
         // series tier (memory IS the metric, THEORY.md).
-        int accumulator_bitwidth() const
-        {
+        int accumulator_bitwidth() const {
             return num.bit_width() + den.bit_width();
         }
 
@@ -107,17 +101,14 @@ namespace nam
         // step budget is exhausted. Returns the number of terms stepped. This
         // is a convenience the refiner can call to batch-converge instead of
         // stepping one term per digit attempt.
-        uint64_t converge_to_digits(int target_digits, int max_steps = 100000)
-        {
+        uint64_t converge_to_digits(int target_digits, int max_steps = 100000) {
             uint64_t stepped = 0;
             // Required: err/den < base^{-target_digits}, i.e.
             // err * base^target_digits < den.
             BigInt threshold = big_pow(BigInt(static_cast<int64_t>(base)),
                                        static_cast<uint64_t>(target_digits));
-            for (int i = 0; i < max_steps; ++i)
-            {
-                if (index > 0)
-                {
+            for (int i = 0; i < max_steps; ++i) {
+                if (index > 0) {
                     BigInt err = tail();
                     if (err * threshold < den) break;
                 }
@@ -130,8 +121,7 @@ namespace nam
 
     // ---- Construct a SeriesVM from a spec ----
     inline SeriesVM make_series(std::shared_ptr<const SeriesSpec> spec,
-                                uint32_t base)
-    {
+                                uint32_t base) {
         SeriesVM vm;
         vm.base = base;
         vm.index = 0;

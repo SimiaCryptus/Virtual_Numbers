@@ -28,29 +28,25 @@
 #include "padic.hpp"
 #include "codec.hpp"
 
-namespace nam
-{
+namespace nam {
     // The set of automaton generators the JIT/interpreter can specialize.
     // Matches Number::Gen but lives at the ABI-adjacent layer so the JIT
     // does not depend on the user tier.
-    enum class GenTag : uint32_t
-    {
+    enum class GenTag : uint32_t {
         Rational = 0,
         Sqrt = 1,
         PAdic = 2,
     };
 
     // Node kinds for the runtime expression tree.
-    enum class ExprKind : uint32_t
-    {
+    enum class ExprKind : uint32_t {
         Leaf = 0, // a built-in generator with a seed AutomatonVM
         Rebase = 1, // reproject a Rational child into a new base (codec)
     };
 
     // A runtime expression tree node. Leaves carry the seed VM; Rebase
     // nodes carry exactly one child and a target base.
-    struct Expr
-    {
+    struct Expr {
         ExprKind kind = ExprKind::Leaf;
         GenTag gen = GenTag::Rational; // valid when kind == Leaf
         AutomatonVM seed{}; // valid when kind == Leaf
@@ -59,8 +55,7 @@ namespace nam
 
         // ----- Leaf builders -----
         static std::shared_ptr<Expr> leaf_rational(uint64_t p, uint64_t q,
-                                                   uint32_t base)
-        {
+                                                   uint32_t base) {
             auto e = std::make_shared<Expr>();
             e->kind = ExprKind::Leaf;
             e->gen = GenTag::Rational;
@@ -68,8 +63,7 @@ namespace nam
             return e;
         }
 
-        static std::shared_ptr<Expr> leaf_sqrt(uint64_t D, uint32_t base)
-        {
+        static std::shared_ptr<Expr> leaf_sqrt(uint64_t D, uint32_t base) {
             auto e = std::make_shared<Expr>();
             e->kind = ExprKind::Leaf;
             e->gen = GenTag::Sqrt;
@@ -78,8 +72,7 @@ namespace nam
         }
 
         static std::shared_ptr<Expr> leaf_padic(int64_t a, int64_t b,
-                                                uint32_t p)
-        {
+                                                uint32_t p) {
             auto e = std::make_shared<Expr>();
             e->kind = ExprKind::Leaf;
             e->gen = GenTag::PAdic;
@@ -89,8 +82,7 @@ namespace nam
 
         // ----- Rebase (codec) node: only analytic for Rational leaves -----
         static std::shared_ptr<Expr> rebase(std::shared_ptr<Expr> child,
-                                            uint32_t new_base)
-        {
+                                            uint32_t new_base) {
             auto e = std::make_shared<Expr>();
             e->kind = ExprKind::Rebase;
             e->rebase_to = new_base;
@@ -103,23 +95,18 @@ namespace nam
     // the Phase 4 node set the tree always collapses to a single automaton
     // generator: Rebase on a Rational leaf is the analytic codec swap, and
     // a Leaf is itself. This is the canonicalization the JIT specializes.
-    struct ResolvedGen
-    {
+    struct ResolvedGen {
         GenTag gen;
         AutomatonVM seed;
     };
 
-    inline ResolvedGen resolve_expr(const Expr& e)
-    {
-        switch (e.kind)
-        {
-        case ExprKind::Leaf:
-            return ResolvedGen{e.gen, e.seed};
-        case ExprKind::Rebase:
-            {
+    inline ResolvedGen resolve_expr(const Expr &e) {
+        switch (e.kind) {
+            case ExprKind::Leaf:
+                return ResolvedGen{e.gen, e.seed};
+            case ExprKind::Rebase: {
                 ResolvedGen c = resolve_expr(*e.child);
-                if (c.gen == GenTag::Rational)
-                {
+                if (c.gen == GenTag::Rational) {
                     // Analytic rational reprojection (codec.hpp).
                     return ResolvedGen{
                         GenTag::Rational,
