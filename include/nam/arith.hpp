@@ -20,11 +20,9 @@
 #ifndef NAM_ARITH_HPP
 #define NAM_ARITH_HPP
 
-#include <cstdint>
 #include <functional>
 #include <optional>
 #include <cstdio>
-#include <cstdlib>
 
 #include "big_int.hpp"
 
@@ -60,7 +58,7 @@ namespace nam {
     // fractional expansion read integer_part() once up front.
     class ArithStream {
     public:
-        ArithStream(ArithOp op, DigitFn x, DigitFn y, uint32_t base)
+        ArithStream(const ArithOp op, DigitFn x, DigitFn y, const uint32_t base)
             : op_(op), x_(std::move(x)), y_(std::move(y)), base_(base) {
             // Initialise both operand intervals to the full [0,1) box:
             // lo=0, hi=1 over den=1.
@@ -130,11 +128,11 @@ namespace nam {
         // Refine one operand by pulling its next digit. Returns false on
         // honest pending.
         bool refine_x() {
-            auto d = x_();
+            const auto d = x_();
             if (!d.has_value()) return false;
             if (*d == 0) ++x_zero_run_;
             else x_zero_run_ = 0;
-            BigInt B(base_);
+            const BigInt B(base_);
             // new lo = lo*base + d ; den *= base ; hi = lo + 1.
             xlo_ = xlo_ * B + BigInt(*d);
             xden_ = xden_ * B;
@@ -145,11 +143,11 @@ namespace nam {
         }
 
         bool refine_y() {
-            auto d = y_();
+            const auto d = y_();
             if (!d.has_value()) return false;
             if (*d == 0) ++y_zero_run_;
             else y_zero_run_ = 0;
-            BigInt B(base_);
+            const BigInt B(base_);
             ylo_ = ylo_ * B + BigInt(*d);
             yden_ = yden_ * B;
             yhi_ = ylo_ + BigInt(1);
@@ -202,10 +200,10 @@ namespace nam {
                     if (!(ylo_ > BigInt(0))) return false;
                     // lo = (xlo/xden)/(yhi/yden) = xlo*yden / (xden*yhi)
                     // hi = (xhi/xden)/(ylo/yden) = xhi*yden / (xden*ylo)
-                    BigInt lo_num = xlo_ * yden_;
-                    BigInt lo_den = xden_ * yhi_;
-                    BigInt hi_num = xhi_ * yden_;
-                    BigInt hi_den = xden_ * ylo_;
+                    const BigInt lo_num = xlo_ * yden_;
+                    const BigInt lo_den = xden_ * yhi_;
+                    const BigInt hi_num = xhi_ * yden_;
+                    const BigInt hi_den = xden_ * ylo_;
                     // Put over a common denominator cden = lo_den * hi_den.
                     cden = lo_den * hi_den;
                     clo = lo_num * hi_den;
@@ -230,7 +228,7 @@ namespace nam {
                         int_part_ = ilo;
                         // Fractional remainder interval over scale = cden:
                         // rlo = clo - ilo*cden ; rhi = chi - ilo*cden.
-                        BigInt ip_scaled = ilo * cden;
+                        const BigInt ip_scaled = ilo * cden;
                         rlo_ = clo - ip_scaled;
                         rhi_ = chi - ip_scaled;
                         scale_ = cden;
@@ -251,7 +249,7 @@ namespace nam {
         bool recompute_fraction() {
             BigInt clo, chi, cden;
             if (!combined_interval(clo, chi, cden)) return false;
-            BigInt ip_scaled = int_part_ * cden;
+            const BigInt ip_scaled = int_part_ * cden;
             rlo_ = clo - ip_scaled;
             rhi_ = chi - ip_scaled;
             scale_ = cden;
@@ -260,7 +258,7 @@ namespace nam {
 
         // Emit one fractional digit if committable; refine otherwise.
         std::optional<uint32_t> next_fraction_digit() {
-            BigInt B(base_);
+            const BigInt B(base_);
             for (int iter = 0; iter < max_refine_iters_; ++iter) {
                 ++fraction_iter_count_;
                 // Keep the fractional interval reduced: divide out any
@@ -330,7 +328,7 @@ namespace nam {
         // Emit a one-shot diagnostic snapshot of the interval state. Always
         // compiled in (cheap) so the *next* freeze report includes numbers,
         // not just a backtrace. Guarded counters keep it readable.
-        void dump_state(const char *where, int iter) const {
+        void dump_state(const char *where, const int iter) const {
             std::fprintf(stderr,
                          "[arith] %s\n"
                          "        op=%d base=%u iter=%d refines=%lld frac_iters=%lld\n"
@@ -359,9 +357,9 @@ namespace nam {
             if (!combined_interval(clo, chi, cden)) return false;
             // remaining = (combined - int_part) * base^k - emitted_prefix,
             // over denominator cden, where k = #emitted fractional digits.
-            BigInt full_lo = (clo - int_part_ * cden) * emitted_scale_;
-            BigInt full_hi = (chi - int_part_ * cden) * emitted_scale_;
-            BigInt prefix_scaled = emitted_prefix_ * cden;
+            const BigInt full_lo = (clo - int_part_ * cden) * emitted_scale_;
+            const BigInt full_hi = (chi - int_part_ * cden) * emitted_scale_;
+            const BigInt prefix_scaled = emitted_prefix_ * cden;
             rlo_ = full_lo - prefix_scaled;
             rhi_ = full_hi - prefix_scaled;
             scale_ = cden;
@@ -372,15 +370,15 @@ namespace nam {
         // This bounds the size of the operands handed to BigInt division so
         // the refine loop cannot blow up into a freeze.
         void reduce_fraction() {
-            BigInt B(base_);
+            const BigInt B(base_);
             for (;;) {
                 if (scale_.is_zero()) break;
                 BigInt r1, r2, r3;
-                BigInt q_scale = BigInt::divmod(scale_, B, r1);
+                const BigInt q_scale = BigInt::divmod(scale_, B, r1);
                 if (!r1.is_zero()) break; // scale_ not divisible
-                BigInt q_lo = BigInt::divmod(rlo_, B, r2);
+                const BigInt q_lo = BigInt::divmod(rlo_, B, r2);
                 if (!r2.is_zero()) break; // rlo_ not divisible
-                BigInt q_hi = BigInt::divmod(rhi_, B, r3);
+                const BigInt q_hi = BigInt::divmod(rhi_, B, r3);
                 if (!r3.is_zero()) break; // rhi_ not divisible
                 scale_ = q_scale;
                 rlo_ = q_lo;
@@ -431,15 +429,15 @@ namespace nam {
         // accumulate trailing factors of `base` in lockstep; stripping them
         // keeps the denominators bounded so the combined divmod stays cheap.
         void reduce_operand(BigInt &lo, BigInt &hi, BigInt &den) {
-            BigInt B(base_);
+            const BigInt B(base_);
             for (;;) {
                 if (den.is_zero()) break;
                 BigInt r1, r2, r3;
-                BigInt q_den = BigInt::divmod(den, B, r1);
+                const BigInt q_den = BigInt::divmod(den, B, r1);
                 if (!r1.is_zero()) break;
-                BigInt q_lo = BigInt::divmod(lo, B, r2);
+                const BigInt q_lo = BigInt::divmod(lo, B, r2);
                 if (!r2.is_zero()) break;
-                BigInt q_hi = BigInt::divmod(hi, B, r3);
+                const BigInt q_hi = BigInt::divmod(hi, B, r3);
                 if (!r3.is_zero()) break;
                 den = q_den;
                 lo = q_lo;

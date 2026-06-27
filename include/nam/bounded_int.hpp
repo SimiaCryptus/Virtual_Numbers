@@ -11,7 +11,6 @@
 #ifndef NAM_BOUNDED_INT_HPP
 #define NAM_BOUNDED_INT_HPP
 
-#include <cstdint>
 #include <bit>
 
 namespace nam {
@@ -26,10 +25,10 @@ namespace nam {
 
         constexpr BoundedInt() = default;
 
-        constexpr BoundedInt(uint64_t v) : lo(v), hi(0) {
+        constexpr BoundedInt(const uint64_t v) : lo(v), hi(0) {
         }
 
-        constexpr BoundedInt(uint64_t h, uint64_t l) : lo(l), hi(h) {
+        constexpr BoundedInt(const uint64_t h, const uint64_t l) : lo(l), hi(h) {
         }
 
         constexpr bool is_zero() const { return lo == 0 && hi == 0; }
@@ -52,37 +51,37 @@ namespace nam {
             return a < b || a == b;
         }
 
-        friend constexpr BoundedInt operator+(BoundedInt a, const BoundedInt &b) {
-            uint64_t lo = a.lo + b.lo;
-            uint64_t carry = (lo < a.lo) ? 1u : 0u;
-            uint64_t hi = a.hi + b.hi + carry;
+        friend constexpr BoundedInt operator+(const BoundedInt a, const BoundedInt &b) {
+            const uint64_t lo = a.lo + b.lo;
+            const uint64_t carry = (lo < a.lo) ? 1u : 0u;
+            const uint64_t hi = a.hi + b.hi + carry;
             return BoundedInt(hi, lo);
         }
 
-        friend constexpr BoundedInt operator-(BoundedInt a, const BoundedInt &b) {
-            uint64_t lo = a.lo - b.lo;
-            uint64_t borrow = (a.lo < b.lo) ? 1u : 0u;
-            uint64_t hi = a.hi - b.hi - borrow;
+        friend constexpr BoundedInt operator-(const BoundedInt a, const BoundedInt &b) {
+            const uint64_t lo = a.lo - b.lo;
+            const uint64_t borrow = (a.lo < b.lo) ? 1u : 0u;
+            const uint64_t hi = a.hi - b.hi - borrow;
             return BoundedInt(hi, lo);
         }
 
         // Multiply by a small (<= 2^32) factor; keeps within 128 bits for the
         // bounded use here. Suitable for "remainder * base" steps.
-        constexpr BoundedInt mul_small(uint64_t f) const {
+        constexpr BoundedInt mul_small(const uint64_t f) const {
             // Split lo into 32-bit halves to avoid overflow in the partials.
             const uint64_t mask = 0xffffffffull;
-            uint64_t l0 = lo & mask;
-            uint64_t l1 = lo >> 32;
-            uint64_t p0 = l0 * f;
-            uint64_t p1 = l1 * f;
-            uint64_t res_lo = p0 + (p1 << 32);
-            uint64_t carry = (res_lo < p0) ? 1u : 0u;
-            uint64_t res_hi = (p1 >> 32) + carry + hi * f;
+            const uint64_t l0 = lo & mask;
+            const uint64_t l1 = lo >> 32;
+            const uint64_t p0 = l0 * f;
+            const uint64_t p1 = l1 * f;
+            const uint64_t res_lo = p0 + (p1 << 32);
+            const uint64_t carry = (res_lo < p0) ? 1u : 0u;
+            const uint64_t res_hi = (p1 >> 32) + carry + hi * f;
             return BoundedInt(res_hi, res_lo);
         }
 
         // Long division by a 64-bit divisor. Returns quotient, sets remainder.
-        constexpr BoundedInt divmod(uint64_t d, uint64_t &rem_out) const {
+        constexpr BoundedInt divmod(const uint64_t d, uint64_t &rem_out) const {
             // Restoring division over 128 bits. d fits in 64 bits.
             BoundedInt q;
             uint64_t rem = 0;
@@ -97,12 +96,12 @@ namespace nam {
             return q;
         }
 
-        constexpr uint64_t bit_at(int i) const {
+        constexpr uint64_t bit_at(const int i) const {
             if (i >= 64) return (hi >> (i - 64)) & 1ull;
             return (lo >> i) & 1ull;
         }
 
-        constexpr void set_bit(int i) {
+        constexpr void set_bit(const int i) {
             if (i >= 64) hi |= (1ull << (i - 64));
             else lo |= (1ull << i);
         }

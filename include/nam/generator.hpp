@@ -1,60 +1,59 @@
 // include/nam/generator.hpp
 //
-// C++20 Generator concept over the NumVMFn ABI, plus the ABI guardrails and
-// the O(1) struct-copy fork. (Section 2.2, 2.3, 3.1.)
+// The Generator concept over the NumberSpace model.
+//
+// A generator G owns a value type G::State and exposes
+//
+//     static Step<State> step(const NumberSpace&, State);
+//
+// The NumberSpace is the shared coordinate frame (base/direction/scale);
+// the State is the generator's own register file -- whatever shape it
+// needs, no longer a frozen 40-byte blob. Fork is, for the automaton tier,
+// still a literal value copy of State (O(1)); the series tier documents its
+// own deep-copy cost.
 #ifndef NAM_GENERATOR_HPP
 #define NAM_GENERATOR_HPP
 
 #include <concepts>
-#include <type_traits>
 
-#include "abi.h"
+#include "number_space.hpp"
 
 namespace nam {
-    // ---- ABI guardrails (Section 2.2): write these as compile-time proofs. ----
-    static_assert(sizeof(AutomatonVM) == 40,
-                  "AutomatonVM must be 4 + 4 + 4*8 == 40 bytes");
-    static_assert(std::is_trivially_copyable_v<AutomatonVM>,
-                  "fork must be a literal struct copy");
-    static_assert(std::is_standard_layout_v<AutomatonVM>,
-                  "AutomatonVM must be C-ABI safe");
-    static_assert(sizeof(NumVMStep) == 48 || sizeof(NumVMStep) <= 56,
-                  "NumVMStep is digit + AutomatonVM (padding-permitting)");
-
-    // ---- The Generator concept (Section 3.1). ----
-    // Anything that exposes a static `step(AutomatonVM) -> NumVMStep` satisfies
-    // it. Keeping step static + inline lets Clang inline across the boundary.
+    // ---- The Generator concept. ----
     template<typename G>
-    concept Generator = requires(AutomatonVM s)
+    concept Generator = requires(NumberSpace ns, typename G::State s)
     {
-        { G::step(s) } -> std::same_as<NumVMStep>;
+        typename G::State;
+        { G::step(ns, s) } -> std::same_as<Step<typename G::State> >;
     };
 
-    // ---- Fork: the whole point of Phase 1 (Section 2.3). ----
-    // Pure value copy. O(1). No hidden state. Fully and without qualification
-    // true for the automaton tier.
-    [[nodiscard]] static inline constexpr AutomatonVM num_vm_fork(AutomatonVM s) {
+    // ---- Fork: pure value copy of the generator state. O(1) for the
+    //      automaton tier (trivially-copyable State). ----
+    template<Generator G>
+    [[nodiscard]] constexpr G::State
+    fork(const typename G::State &s) {
         return s;
     }
 
     // Convenience: emit the first `n` digits of a generator into `out`.
     template<Generator G, typename It>
-    constexpr void take(AutomatonVM s, int n, It out) {
+    constexpr void take(const NumberSpace &ns, typename G::State s,
+                        const int n, It out) {
         for (int i = 0; i < n; ++i) {
-            NumVMStep r = G::step(s);
+            auto r = G::step(ns, s);
             *out++ = r.digit;
             s = r.next;
         }
     }
 
-    // Emit digits while a predicate holds, up to a hard cap `max_n` to keep
-    // the loop total over potentially-infinite streams. Returns the number of
-    // digits emitted. `pred(digit, index)` decides whether to continue.
+    // Emit digits while a predicate holds, up to a hard cap `max_n`.
+    // Returns the number of digits emitted. `pred(digit, index)`.
     template<Generator G, typename It, typename Pred>
-    constexpr int take_while(AutomatonVM s, int max_n, It out, Pred pred) {
+    constexpr int take_while(const NumberSpace &ns, typename G::State s,
+                             const int max_n, It out, Pred pred) {
         int i = 0;
         for (; i < max_n; ++i) {
-            NumVMStep r = G::step(s);
+            auto r = G::step(ns, s);
             if (!pred(r.digit, i)) break;
             *out++ = r.digit;
             s = r.next;
@@ -62,11 +61,11 @@ namespace nam {
         return i;
     }
 
-    // Advance the generator `n` steps without emitting, returning the final
-    // state. O(n); periodic generators should prefer skip.hpp fast paths.
+    // Advance `n` steps without emitting, returning the final state.
     template<Generator G>
-    constexpr AutomatonVM drop(AutomatonVM s, int n) {
-        for (int i = 0; i < n; ++i) s = G::step(s).next;
+    constexpr G::State drop(const NumberSpace &ns,
+                            typename G::State s, const int n) {
+        for (int i = 0; i < n; ++i) s = G::step(ns, s).next;
         return s;
     }
 } // namespace nam

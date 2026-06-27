@@ -1,25 +1,25 @@
 // include/nam/compare.hpp
 //
-// M6: Interval-honest comparison (Section 3.7). Equality is undecidable;
-// we ship only honest, bounded-precision predicates. These operate on a
-// generator type G and two automaton states.
+// M6: Interval-honest comparison. Equality is undecidable; we ship only
+// honest, bounded-precision predicates over a generator G and two states,
+// read against a shared NumberSpace.
 #ifndef NAM_COMPARE_HPP
 #define NAM_COMPARE_HPP
 
 #include <optional>
 
-#include "abi.h"
+#include "number_space.hpp"
 #include "generator.hpp"
 
 namespace nam {
     enum class Trit { Less, Greater, Indistinguishable };
 
-    // agrees_with: exact for a finite prefix of `digits` digits.
     template<Generator G>
-    bool agrees_with(AutomatonVM x, AutomatonVM y, int digits) {
+    bool agrees_with(const NumberSpace &ns, typename G::State x,
+                     typename G::State y, const int digits) {
         for (int i = 0; i < digits; ++i) {
-            NumVMStep rx = G::step(x);
-            NumVMStep ry = G::step(y);
+            auto rx = G::step(ns, x);
+            auto ry = G::step(ns, y);
             if (rx.digit != ry.digit) return false;
             x = rx.next;
             y = ry.next;
@@ -27,46 +27,40 @@ namespace nam {
         return true;
     }
 
-    // definitely_less_than: scans up to max_digits. Returns:
-    //   true  -> x is provably < y (found a digit position where x<y first)
-    //   false (with engaged optional == false) -> provably >= (x>y found first)
-    //   std::nullopt -> pending / indistinguishable within max_digits
-    //
-    // NOTE: this is for *most-significant-first* digit streams (reals/rationals
-    // in a positional base). It is NOT valid for LSB-up p-adic streams.
+    // Valid for most-significant-first (Direction::LR) streams. NOT valid
+    // for LSB-up p-adic (Direction::RL) streams.
     template<Generator G>
-    std::optional<bool> definitely_less_than(AutomatonVM x, AutomatonVM y,
-                                             int max_digits) {
+    std::optional<bool> definitely_less_than(
+        const NumberSpace &ns, typename G::State x, typename G::State y,
+        const int max_digits) {
         for (int i = 0; i < max_digits; ++i) {
-            NumVMStep rx = G::step(x);
-            NumVMStep ry = G::step(y);
+            auto rx = G::step(ns, x);
+            auto ry = G::step(ns, y);
             if (rx.digit < ry.digit) return true;
             if (rx.digit > ry.digit) return false;
             x = rx.next;
             y = ry.next;
         }
-        return std::nullopt; // pending -- never a false definite answer
+        return std::nullopt;
     }
 
     template<Generator G>
-    Trit compare(AutomatonVM x, AutomatonVM y, int max_digits) {
-        auto r = definitely_less_than<G>(x, y, max_digits);
+    Trit compare(const NumberSpace &ns, typename G::State x,
+                 typename G::State y, const int max_digits) {
+        auto r = definitely_less_than<G>(ns, x, y, max_digits);
         if (!r.has_value()) return Trit::Indistinguishable;
         return *r ? Trit::Less : Trit::Greater;
     }
 
-    // Cross-generator comparison: compare two automaton states that may be
-    // driven by *different* generators. This is the honest most-significant-
-    // first lexicographic comparison over a shared step signature, valid for
-    // positional (reals/rationals) streams of the same base. Returns the
-    // index of the first differing digit alongside the verdict, which callers
-    // can use to bound how much precision was consumed.
+    // Cross-generator comparison over a shared NumberSpace (same base,
+    // Direction::LR positional streams).
     template<Generator GX, Generator GY>
-    std::optional<bool> definitely_less_than_xy(AutomatonVM x, AutomatonVM y,
-                                                int max_digits) {
+    std::optional<bool> definitely_less_than_xy(
+        const NumberSpace &ns, typename GX::State x, typename GY::State y,
+        const int max_digits) {
         for (int i = 0; i < max_digits; ++i) {
-            NumVMStep rx = GX::step(x);
-            NumVMStep ry = GY::step(y);
+            auto rx = GX::step(ns, x);
+            auto ry = GY::step(ns, y);
             if (rx.digit < ry.digit) return true;
             if (rx.digit > ry.digit) return false;
             x = rx.next;

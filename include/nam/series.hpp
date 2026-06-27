@@ -20,9 +20,7 @@
 #ifndef NAM_SERIES_HPP
 #define NAM_SERIES_HPP
 
-#include <cstdint>
 #include <functional>
-#include <optional>
 #include <memory>
 
 #include "big_int.hpp"
@@ -101,12 +99,12 @@ namespace nam {
         // step budget is exhausted. Returns the number of terms stepped. This
         // is a convenience the refiner can call to batch-converge instead of
         // stepping one term per digit attempt.
-        uint64_t converge_to_digits(int target_digits, int max_steps = 100000) {
+        uint64_t converge_to_digits(const int target_digits, const int max_steps = 100000) {
             uint64_t stepped = 0;
             // Required: err/den < base^{-target_digits}, i.e.
             // err * base^target_digits < den.
-            BigInt threshold = big_pow(BigInt(base),
-                                       static_cast<uint64_t>(target_digits));
+            const BigInt threshold = big_pow(BigInt(base),
+                                             static_cast<uint64_t>(target_digits));
             for (int i = 0; i < max_steps; ++i) {
                 if (index > 0) {
                     BigInt err = tail();
@@ -121,7 +119,7 @@ namespace nam {
 
     // ---- Construct a SeriesVM from a spec ----
     inline SeriesVM make_series(std::shared_ptr<const SeriesSpec> spec,
-                                uint32_t base) {
+                                const uint32_t base) {
         SeriesVM vm;
         vm.base = base;
         vm.index = 0;

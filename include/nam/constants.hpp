@@ -21,7 +21,6 @@
 #ifndef NAM_CONSTANTS_HPP
 #define NAM_CONSTANTS_HPP
 #include <cstdio>
-#include <cstdlib>
 
 #include <memory>
 
@@ -45,7 +44,7 @@ namespace nam {
     inline std::shared_ptr<const SeriesSpec> e_spec() {
         auto spec = std::make_shared<SeriesSpec>();
         spec->name = "e";
-        spec->advance = [](uint64_t n, BigInt &num, BigInt &den) {
+        spec->advance = [](const uint64_t n, BigInt &num, BigInt &den) {
             // State invariant on entry: den = n! and num = n! * sum_{k<n} 1/k!
             // (for n==0: den=1, num=0).
             if (n == 0) {
@@ -55,13 +54,13 @@ namespace nam {
                 return;
             }
             // Move to den = n! : multiply num and den by n.
-            BigInt bn = BigInt(static_cast<int64_t>(n));
+            const BigInt bn = BigInt(static_cast<int64_t>(n));
             num *= bn;
             den *= bn;
             // Add term k=n = 1/n! -> add 1 to num over den=n!.
             num += BigInt(1);
         };
-        spec->tail_bound = [](uint64_t n, const BigInt &den) {
+        spec->tail_bound = [](const uint64_t n, const BigInt &den) {
             // After summing k=0..n-1 we are at index n with den=(n-1)! ... but
             // because advance leaves den = n! after processing index n-1 ->
             // we treat den as the current factorial. The tail
@@ -86,26 +85,26 @@ namespace nam {
     inline std::shared_ptr<const SeriesSpec> ln2_spec() {
         auto spec = std::make_shared<SeriesSpec>();
         spec->name = "ln2";
-        spec->advance = [](uint64_t n, BigInt &num, BigInt &den) {
+        spec->advance = [](const uint64_t n, BigInt &num, BigInt &den) {
             // index n -> add term for k = n+1: 1/((n+1) 2^{n+1}).
             // Maintain den = (n)! * 2^n on entry (den=1 at n=0).
-            uint64_t k = n + 1;
-            BigInt bk = BigInt(static_cast<int64_t>(k));
+            const uint64_t k = n + 1;
+            const BigInt bk = BigInt(static_cast<int64_t>(k));
             // new den = den * k * 2  (=> k! * 2^k).
-            BigInt newden = den * bk * BigInt(2);
+            const BigInt newden = den * bk * BigInt(2);
             // rescale existing num to newden: factor = k*2.
             num = num * bk * BigInt(2);
             // add term 1/(k 2^k) over newden: newden/(k 2^k) = (k-1)! * 2^{... }
             // term numerator = newden / (k * 2^k). Since newden = k! 2^k,
             // newden/(k 2^k) = (k-1)!.
             // Compute (k-1)! incrementally is costly; derive via division.
-            BigInt denom_term = bk * big_pow(BigInt(2), k);
+            const BigInt denom_term = bk * big_pow(BigInt(2), k);
             BigInt r;
-            BigInt term_num = BigInt::divmod(newden, denom_term, r);
+            const BigInt term_num = BigInt::divmod(newden, denom_term, r);
             num += term_num;
             den = newden;
         };
-        spec->tail_bound = [](uint64_t n, const BigInt &den) {
+        spec->tail_bound = [](const uint64_t n, const BigInt &den) {
             // tail = sum_{k>n} 1/(k 2^k) <= 1/(2^n).  Over den = n! 2^n the
             // bound err/den <= 1/2^n means err <= den / 2^n = n!. Return n!.
             if (n == 0) return BigInt(1);
@@ -121,20 +120,20 @@ namespace nam {
     inline std::shared_ptr<const SeriesSpec> one_over_e_spec() {
         auto spec = std::make_shared<SeriesSpec>();
         spec->name = "1/e";
-        spec->advance = [](uint64_t n, BigInt &num, BigInt &den) {
+        spec->advance = [](const uint64_t n, BigInt &num, BigInt &den) {
             if (n == 0) {
                 num = BigInt(1);
                 den = BigInt(1);
                 return;
             }
-            BigInt bn = BigInt(static_cast<int64_t>(n));
+            const BigInt bn = BigInt(static_cast<int64_t>(n));
             num *= bn;
             den *= bn;
             // term k=n is (-1)^n / n!
             if (n % 2 == 0) num += BigInt(1);
             else num -= BigInt(1);
         };
-        spec->tail_bound = [](uint64_t n, const BigInt &den) {
+        spec->tail_bound = [](const uint64_t n, const BigInt &den) {
             // alternating, monotone: |tail| <= 1/n!  => err <= 1 over den=n!.
             if (n == 0) return BigInt(2);
             (void) den;
@@ -144,15 +143,15 @@ namespace nam {
     }
 
     // Convenience builders.
-    inline SeriesVM make_e(uint32_t base = 10) {
+    inline SeriesVM make_e(const uint32_t base = 10) {
         return make_series(e_spec(), base);
     }
 
-    inline SeriesVM make_ln2(uint32_t base = 10) {
+    inline SeriesVM make_ln2(const uint32_t base = 10) {
         return make_series(ln2_spec(), base);
     }
 
-    inline SeriesVM make_one_over_e(uint32_t base = 10) {
+    inline SeriesVM make_one_over_e(const uint32_t base = 10) {
         return make_series(one_over_e_spec(), base);
     }
 
@@ -179,12 +178,12 @@ namespace nam {
     inline std::shared_ptr<const SeriesSpec> pi_quarter_spec() {
         auto spec = std::make_shared<SeriesSpec>();
         spec->name = "pi/4";
-        spec->advance = [](uint64_t n, BigInt &num, BigInt &den) {
+        spec->advance = [](const uint64_t n, BigInt &num, BigInt &den) {
             // Add the k = n term of arctan(1/2) + arctan(1/3).
             // term_m(k) = (-1)^k / ((2k+1) * m^{2k+1}).
             const int64_t m1 = 2, m2 = 3;
-            uint64_t k = n;
-            uint64_t odd = 2 * k + 1;
+            const uint64_t k = n;
+            const uint64_t odd = 2 * k + 1;
             // Compute exact term numerators over a fresh common denominator.
             // We rebuild num/den from scratch each step using the closed form
             // of the partial sum to stay interval-honest and avoid drift:
@@ -192,7 +191,7 @@ namespace nam {
             //   den = product_{j=0}^{k} (2j+1) * m1^{2k+1} * m2^{2k+1}.
             // To keep it incremental: on entry den holds the previous value;
             // multiply in the new factors.
-            BigInt bodd = BigInt(static_cast<int64_t>(odd));
+            const BigInt bodd = BigInt(static_cast<int64_t>(odd));
             if (n == 0) {
                 // k=0: arctan = 1/m, so sum = 1/2 + 1/3 = 5/6.
                 num = BigInt(5);
@@ -201,18 +200,18 @@ namespace nam {
             }
             // New denominator factor: multiply by odd, m1^2, m2^2 to extend
             // each m^{2k+1} chain by m^2 and introduce the new (2k+1).
-            BigInt m1sq = BigInt(m1 * m1);
-            BigInt m2sq = BigInt(m2 * m2);
-            BigInt newden = den * bodd * m1sq * m2sq;
+            const BigInt m1sq = BigInt(m1 * m1);
+            const BigInt m2sq = BigInt(m2 * m2);
+            const BigInt newden = den * bodd * m1sq * m2sq;
             // Rescale existing numerator to the new denominator.
-            BigInt factor = bodd * m1sq * m2sq;
+            const BigInt factor = bodd * m1sq * m2sq;
             num = num * factor;
             // Add term for arctan(1/2): (-1)^k * newden / ((2k+1) * 2^{2k+1}).
-            BigInt pow1 = big_pow(BigInt(m1), odd);
-            BigInt pow2 = big_pow(BigInt(m2), odd);
+            const BigInt pow1 = big_pow(BigInt(m1), odd);
+            const BigInt pow2 = big_pow(BigInt(m2), odd);
             BigInt r;
-            BigInt t1 = BigInt::divmod(newden, bodd * pow1, r);
-            BigInt t2 = BigInt::divmod(newden, bodd * pow2, r);
+            const BigInt t1 = BigInt::divmod(newden, bodd * pow1, r);
+            const BigInt t2 = BigInt::divmod(newden, bodd * pow2, r);
             if (k % 2 == 0) {
                 num += t1;
                 num += t2;
@@ -222,7 +221,7 @@ namespace nam {
             }
             den = newden;
         };
-        spec->tail_bound = [](uint64_t n, const BigInt &den) {
+        spec->tail_bound = [](const uint64_t n, const BigInt &den) {
             // Both arctan series are alternating with terms bounded by the
             // first omitted term: |tail_m| <= 1/((2n+1) m^{2n+1}). For the
             // larger contribution (m=2) at index n this is < 1/2^{2n}. Over
@@ -230,13 +229,13 @@ namespace nam {
             // series safely.
             if (n == 0) return den; // crude bound before refinement
             BigInt r;
-            BigInt bound = BigInt::divmod(den, big_pow(BigInt(2), 2 * n), r);
+            const BigInt bound = BigInt::divmod(den, big_pow(BigInt(2), 2 * n), r);
             return bound + bound; // cover both arctan tails
         };
         return spec;
     }
 
-    inline SeriesVM make_pi_quarter(uint32_t base = 10) {
+    inline SeriesVM make_pi_quarter(const uint32_t base = 10) {
         return make_series(pi_quarter_spec(), base);
     }
 
@@ -253,11 +252,11 @@ namespace nam {
     inline std::shared_ptr<const SeriesSpec> catalan_spec() {
         auto spec = std::make_shared<SeriesSpec>();
         spec->name = "catalan";
-        spec->advance = [](uint64_t n, BigInt &num, BigInt &den) {
+        spec->advance = [](const uint64_t n, BigInt &num, BigInt &den) {
             // term k=n is (-1)^n / (2n+1)^2.
-            uint64_t odd = 2 * n + 1;
-            BigInt odd_sq = BigInt(static_cast<int64_t>(odd)) *
-                            BigInt(static_cast<int64_t>(odd));
+            const uint64_t odd = 2 * n + 1;
+            const BigInt odd_sq = BigInt(static_cast<int64_t>(odd)) *
+                                  BigInt(static_cast<int64_t>(odd));
             if (n == 0) {
                 // k=0: 1/1 = 1.
                 num = BigInt(1);
@@ -268,7 +267,7 @@ namespace nam {
                 return;
             }
             // New denominator = den * (2n+1)^2.
-            BigInt newden = den * odd_sq;
+            const BigInt newden = den * odd_sq;
             // Rescale existing numerator to the new denominator.
             num = num * odd_sq;
             // Add the new term: newden / (2n+1)^2 = den (the old denominator).
@@ -283,7 +282,7 @@ namespace nam {
                              (n % 2 == 0) ? '+' : '-',
                              num.bit_width(), den.bit_width());
         };
-        spec->tail_bound = [](uint64_t n, const BigInt &den) {
+        spec->tail_bound = [](const uint64_t n, const BigInt &den) {
             // Catalan's series is ALTERNATING, so the partial sum oscillates
             // around the true value: with `n` terms summed (k=0..n-1) the
             // true value lies on the side of num/den determined by the sign
@@ -309,9 +308,9 @@ namespace nam {
             // term so the parity settles. The correct first-omitted-term
             // denominator is (2n+1)^2.
             if (n == 0) return den; // crude bound before refinement
-            uint64_t odd = 2 * n + 1;
-            BigInt odd_sq = BigInt(static_cast<int64_t>(odd)) *
-                            BigInt(static_cast<int64_t>(odd));
+            const uint64_t odd = 2 * n + 1;
+            const BigInt odd_sq = BigInt(static_cast<int64_t>(odd)) *
+                                  BigInt(static_cast<int64_t>(odd));
             BigInt r;
             BigInt bound = BigInt::divmod(den, odd_sq, r);
             // Round UP whenever there is a nonzero remainder so the
@@ -334,7 +333,7 @@ namespace nam {
         return spec;
     }
 
-    inline SeriesVM make_catalan(uint32_t base = 10) {
+    inline SeriesVM make_catalan(const uint32_t base = 10) {
         return make_series(catalan_spec(), base);
     }
 } // namespace nam

@@ -12,11 +12,9 @@
 #ifndef NAM_MEMO_HPP
 #define NAM_MEMO_HPP
 
-#include <cstdint>
 #include <list>
 #include <optional>
 #include <unordered_map>
-#include <vector>
 
 namespace nam {
     // A bounded LRU cache from digit-index -> digit. Bounded to `capacity`
@@ -24,26 +22,26 @@ namespace nam {
     // a small intrusive LRU, not a heavy external dependency, per the plan.
     class LruDigitCache {
     public:
-        explicit LruDigitCache(size_t capacity) : capacity_(capacity) {
+        explicit LruDigitCache(const size_t capacity) : capacity_(capacity) {
         }
 
-        std::optional<uint32_t> get(uint64_t index) {
-            auto it = map_.find(index);
+        std::optional<uint32_t> get(const uint64_t index) {
+            const auto it = map_.find(index);
             if (it == map_.end()) return std::nullopt;
             // Move to front (most-recently-used).
             order_.splice(order_.begin(), order_, it->second.second);
             return it->second.first;
         }
 
-        void put(uint64_t index, uint32_t digit) {
-            auto it = map_.find(index);
+        void put(const uint64_t index, uint32_t digit) {
+            const auto it = map_.find(index);
             if (it != map_.end()) {
                 it->second.first = digit;
                 order_.splice(order_.begin(), order_, it->second.second);
                 return;
             }
             if (map_.size() >= capacity_ && !order_.empty()) {
-                uint64_t evict = order_.back();
+                const uint64_t evict = order_.back();
                 order_.pop_back();
                 map_.erase(evict);
             }
@@ -68,14 +66,14 @@ namespace nam {
     template<typename Producer>
     class CachedDigitSource {
     public:
-        CachedDigitSource(Producer producer, size_t max_digits)
+        CachedDigitSource(Producer producer, const size_t max_digits)
             : producer_(std::move(producer)), cache_(max_digits) {
         }
 
         // Returns the digit at `index`, computing sequentially as needed and
         // memoizing. nullopt propagates an honest pending from the producer.
-        std::optional<uint32_t> digit(uint64_t index) {
-            if (auto c = cache_.get(index)) return c;
+        std::optional<uint32_t> digit(const uint64_t index) {
+            if (const auto c = cache_.get(index)) return c;
             // Compute forward from produced_ up to index.
             while (produced_ <= index) {
                 auto d = producer_();

@@ -19,18 +19,15 @@
 #ifndef NAM_NUMBER_HPP
 #define NAM_NUMBER_HPP
 
-#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
 #include <variant>
 #include <vector>
 
-#include "abi.h"
-#include "generator.hpp"
+#include "number_space.hpp"
 #include "rational.hpp"
 #include "algebraic.hpp"
-#include "codec.hpp"
 #include "padic.hpp"
 #include "compare.hpp"
 #include "skip.hpp"
@@ -48,7 +45,7 @@ namespace nam {
     // value with no hidden state leaking across scopes (RAII guard).
     class PrecisionContext {
     public:
-        explicit PrecisionContext(int digits) : prev_(current()) {
+        explicit PrecisionContext(const int digits) : prev_(current()) {
             current() = digits;
         }
 
@@ -71,7 +68,7 @@ namespace nam {
     };
 
     // Convenience factory mirroring `with precision_context(digits=50):`.
-    inline PrecisionContext precision_context(int digits) {
+    inline PrecisionContext precision_context(const int digits) {
         return PrecisionContext(digits);
     }
 
@@ -96,45 +93,48 @@ namespace nam {
         enum class Memo { Streaming, Cached };
 
         // ----- Construction (user-layer ergonomic constructors) -----
-        static Number rational(uint64_t p, uint64_t q, uint32_t base = 10) {
+        static Number rational(const uint64_t p, const uint64_t q, const uint32_t base = 10) {
             Number n;
             n.tier_ = Tier::Automaton;
             n.gen_ = Gen::Rational;
-            n.vm_ = make_rational(p, q, base);
+            n.space_ = NumberSpace{base, Direction::LR, 0};
+            n.state_ = make_rational_state(p, q);
             return n;
         }
 
-        static Number sqrt(uint64_t D, uint32_t base = 10) {
+        static Number sqrt(const uint64_t D, const uint32_t base = 10) {
             Number n;
             n.tier_ = Tier::Automaton;
             n.gen_ = Gen::Sqrt;
-            n.vm_ = make_sqrt(D, base);
+            n.space_ = NumberSpace{base, Direction::LR, 0};
+            n.state_ = make_sqrt_state(D);
             return n;
         }
 
-        static Number padic(int64_t a, int64_t b, uint32_t p) {
+        static Number padic(const int64_t a, const int64_t b, const uint32_t p) {
             Number n;
             n.tier_ = Tier::Automaton;
             n.gen_ = Gen::PAdic;
-            n.vm_ = make_padic(a, b, p);
+            n.space_ = padic_space(p);
+            n.state_ = make_padic_state(a, b);
             return n;
         }
 
         // Series-tier transcendentals (fractional value in [0,1)).
-        static Number e(uint32_t base = 10) { return series(make_e(base)); }
-        static Number ln2(uint32_t base = 10) { return series(make_ln2(base)); }
+        static Number e(const uint32_t base = 10) { return series(make_e(base)); }
+        static Number ln2(const uint32_t base = 10) { return series(make_ln2(base)); }
 
-        static Number one_over_e(uint32_t base = 10) {
+        static Number one_over_e(const uint32_t base = 10) {
             return series(make_one_over_e(base));
         }
 
         // pi/4 (fractional value in [0,1) = 0.7853981...).
-        static Number pi_quarter(uint32_t base = 10) {
+        static Number pi_quarter(const uint32_t base = 10) {
             return series(make_pi_quarter(base));
         }
 
         // Catalan's constant G = 0.9159655941...
-        static Number catalan(uint32_t base = 10) {
+        static Number catalan(const uint32_t base = 10) {
             return series(make_catalan(base));
         }
 
@@ -197,7 +197,7 @@ namespace nam {
 
         uint32_t base() const {
             switch (tier_) {
-                case Tier::Automaton: return vm_.base;
+                case Tier::Automaton: return space_.base;
                 case Tier::Series: return series_.base;
                 case Tier::Arith: return arith_base_;
             }
@@ -220,15 +220,12 @@ namespace nam {
         // re-seeded by re-decoding through a streaming reprojection in the
         // digit layer. For Phase 3 we expose the exact rational reprojection
         // and a codec swap for series (which carries base in the VM).
-        Number in_base(uint32_t new_base) const {
+        Number in_base(const uint32_t new_base) const {
             Number n = *this;
             if (tier_ == Tier::Automaton) {
-                if (gen_ == Gen::Rational) {
-                    n.vm_ = rational_in_base(vm_, new_base);
-                } else {
-                    // Generic generators carry base in the VM directly.
-                    n.vm_.base = new_base;
-                }
+                // Base is a codec: reprojecting is rebinding the space's base.
+                // Rational state is base-agnostic; Sqrt/PAdic rebind too.
+                n.space_ = space_.in_base(new_base);
             } else {
                 n.series_.base = new_base;
             }
@@ -261,7 +258,8 @@ namespace nam {
             b.memo_ = memo_;
             b.cache_max_ = cache_max_;
             if (tier_ == Tier::Automaton) {
-                b.vm_ = num_vm_fork(vm_); // O(1)
+                b.space_ = space_;
+                b.state_ = state_; // O(1) value copy of generator state
             } else if (tier_ == Tier::Series) {
                 b.series_ = series_.fork(); // O(log n) explicit deep copy
             } else // Tier::Arith
@@ -291,11 +289,12 @@ namespace nam {
         }
 
         // ----- Skip-ahead (only meaningful for periodic automata) -----
-        std::optional<Number> skip(uint64_t n) const {
+        std::optional<Number> skip(const uint64_t n) const {
             if (tier_ != Tier::Automaton) return std::nullopt;
             if (gen_ != Gen::Rational) return std::nullopt; // Phase 1 path
             Number r = *this;
-            r.vm_ = skip_rational(n, vm_);
+            r.state_ = skip_rational(space_, n,
+                                     std::get<Rational::State>(state_));
             return r;
         }
 
@@ -305,16 +304,14 @@ namespace nam {
         // honestly stall at exact-boundary inputs.
         std::optional<uint32_t> next_digit() {
             if (tier_ == Tier::Automaton) {
-                NumVMStep r = automaton_step(vm_);
-                vm_ = r.next;
-                uint32_t d = r.digit;
+                uint32_t d = automaton_step();
                 memo_put(emitted_, d);
                 ++emitted_;
                 return d;
             }
             if (tier_ == Tier::Arith) {
                 if (!arith_) return std::nullopt;
-                auto d = arith_->next_digit();
+                const auto d = arith_->next_digit();
                 if (d.has_value()) {
                     memo_put(emitted_, *d);
                     ++emitted_;
@@ -326,7 +323,7 @@ namespace nam {
                 extractor_ = std::make_shared<DigitExtractor>(
                     make_extractor(series_.fork(), series_.base));
             }
-            auto d = nam::next_digit(*extractor_);
+            const auto d = nam::next_digit(*extractor_);
             if (d.has_value()) {
                 memo_put(emitted_, *d);
                 ++emitted_;
@@ -336,7 +333,7 @@ namespace nam {
 
         // Emit up to n digits. May return fewer than n if the series tier
         // honestly stalls (pending) at a boundary value.
-        std::vector<uint32_t> digits(int n) {
+        std::vector<uint32_t> digits(const int n) {
             std::vector<uint32_t> out;
             out.reserve(n);
             for (int i = 0; i < n; ++i) {
@@ -357,7 +354,7 @@ namespace nam {
         // histogram[d] is the count of digit value d. The vector length is
         // the current base; entries for never-seen digits stay 0. A pending
         // stall (series boundary) simply yields fewer counted digits.
-        std::vector<uint64_t> digit_histogram(int n) {
+        std::vector<uint64_t> digit_histogram(const int n) {
             std::vector<uint64_t> hist(base(), 0);
             Number copy = *this;
             for (int i = 0; i < n; ++i) {
@@ -373,7 +370,7 @@ namespace nam {
         // agrees_with: EXACT for a finite prefix of `digits` digits.
         // Only valid for like-tier, like-generator, same-base numbers; the
         // automaton path uses the typed comparator, the series path streams.
-        bool agrees_with(const Number &other, int digits) const {
+        bool agrees_with(const Number &other, const int digits) const {
             Number a = *this, b = other;
             for (int i = 0; i < digits; ++i) {
                 auto da = a.next_digit();
@@ -388,7 +385,7 @@ namespace nam {
         // Valid for MSB-first positional streams (rationals/reals), NOT for
         // LSB-up p-adics -- mirrors compare.hpp's documented restriction.
         std::optional<bool> definitely_less_than(const Number &other,
-                                                 int max_digits) const {
+                                                 const int max_digits) const {
             Number a = *this, b = other;
             for (int i = 0; i < max_digits; ++i) {
                 auto da = a.next_digit();
@@ -400,8 +397,8 @@ namespace nam {
             return std::nullopt; // indistinguishable within bound
         }
 
-        Trit compare(const Number &other, int max_digits) const {
-            auto r = definitely_less_than(other, max_digits);
+        Trit compare(const Number &other, const int max_digits) const {
+            const auto r = definitely_less_than(other, max_digits);
             if (!r.has_value()) return Trit::Indistinguishable;
             return *r ? Trit::Less : Trit::Greater;
         }
@@ -410,7 +407,7 @@ namespace nam {
         // Render the fractional expansion as "0.<digits>" in the current
         // base (bases <= 36 use 0-9a-z). Honest: a trailing '?' marks a
         // pending (series boundary) stall.
-        std::string to_string(int digits_n) {
+        std::string to_string(const int digits_n) {
             Number copy = *this;
             std::string out = "0.";
             for (int i = 0; i < digits_n; ++i) {
@@ -427,7 +424,10 @@ namespace nam {
     private:
         Tier tier_ = Tier::Automaton;
         Gen gen_ = Gen::Rational;
-        AutomatonVM vm_{};
+        NumberSpace space_{};
+        std::variant<Rational::State, Sqrt::State, PAdic::State> state_{
+            Rational::State{}
+        };
         SeriesVM series_{};
         Memo memo_ = Memo::Streaming;
         size_t cache_max_ = 0;
@@ -437,20 +437,39 @@ namespace nam {
         std::shared_ptr<ArithStream> arith_;
         uint32_t arith_base_ = 10;
 
-        NumVMStep automaton_step(AutomatonVM s) const {
+        // Step the active automaton generator in-place, returning the digit.
+        uint32_t automaton_step() {
             switch (gen_) {
-                case Gen::Rational: return Rational::step(s);
-                case Gen::Sqrt: return Sqrt::step(s);
-                case Gen::PAdic: return PAdic::step(s);
+                case Gen::Rational: {
+                    auto &s = std::get<Rational::State>(state_);
+                    const auto r = Rational::step(space_, s);
+                    s = r.next;
+                    return r.digit;
+                }
+                case Gen::Sqrt: {
+                    auto &s = std::get<Sqrt::State>(state_);
+                    const auto r = Sqrt::step(space_, s);
+                    s = r.next;
+                    return r.digit;
+                }
+                case Gen::PAdic: {
+                    auto &s = std::get<PAdic::State>(state_);
+                    const auto r = PAdic::step(space_, s);
+                    s = r.next;
+                    return r.digit;
+                }
             }
-            return Rational::step(s);
+            auto &s = std::get<Rational::State>(state_);
+            const auto r = Rational::step(space_, s);
+            s = r.next;
+            return r.digit;
         }
 
-        void memo_put(uint64_t index, uint32_t digit) {
+        void memo_put(const uint64_t index, const uint32_t digit) {
             if (memo_ == Memo::Cached && cache_) cache_->put(index, digit);
         }
 
-        static char digit_char(uint32_t d) {
+        static char digit_char(const uint32_t d) {
             if (d < 10) return static_cast<char>('0' + d);
             if (d < 36) return static_cast<char>('a' + (d - 10));
             return '#';
@@ -458,13 +477,13 @@ namespace nam {
     };
 
     // ---- Free-function ergonomic constructors (mpmath-flavoured) ----
-    inline Number make_e_number(uint32_t base = 10) { return Number::e(base); }
+    inline Number make_e_number(const uint32_t base = 10) { return Number::e(base); }
 
-    inline Number make_ln2_number(uint32_t base = 10) {
+    inline Number make_ln2_number(const uint32_t base = 10) {
         return Number::ln2(base);
     }
 
-    inline Number sqrt(uint64_t D, uint32_t base = 10) {
+    inline Number sqrt(const uint64_t D, const uint32_t base = 10) {
         return Number::sqrt(D, base);
     }
 } // namespace nam

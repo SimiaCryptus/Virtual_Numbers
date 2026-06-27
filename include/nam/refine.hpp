@@ -16,7 +16,6 @@
 #ifndef NAM_REFINE_HPP
 #define NAM_REFINE_HPP
 
-#include <cstdint>
 #include <optional>
 #include <vector>
 
@@ -50,18 +49,18 @@ namespace nam {
         // value in [num/den, (num + err)/den]; we represent that over
         // scale = den so lo = num, hi = num + err.
         void sync_interval() {
-            BigInt err = vm.tail();
+            const BigInt err = vm.tail();
             scale = vm.den;
             // Shift the full-fraction interval left by `consumed` base-digits,
             // then subtract the integer prefix already emitted. This re-derives
             // the remaining fraction exactly from the VM (interval-honest),
             // avoiding the broken incremental rescale.
-            BigInt shift = big_pow(BigInt(base),
-                                   static_cast<uint64_t>(consumed));
-            BigInt full_lo = vm.num * shift;
-            BigInt full_hi = (vm.num + err) * shift;
+            const BigInt shift = big_pow(BigInt(base),
+                                         static_cast<uint64_t>(consumed));
+            const BigInt full_lo = vm.num * shift;
+            const BigInt full_hi = (vm.num + err) * shift;
             // prefix * scale subtracts the integer digits already emitted.
-            BigInt prefix_scaled = prefix * scale;
+            const BigInt prefix_scaled = prefix * scale;
             lo = full_lo - prefix_scaled;
             hi = full_hi - prefix_scaled;
         }
@@ -76,7 +75,7 @@ namespace nam {
     // The caller is responsible for ensuring the series converges to a value
     // in [0, 1); for whole transcendentals like e we extract the fractional
     // part separately (see constants.hpp).
-    inline DigitExtractor make_extractor(SeriesVM vm, uint32_t base) {
+    inline DigitExtractor make_extractor(SeriesVM vm, const uint32_t base) {
         DigitExtractor ex;
         ex.vm = std::move(vm);
         ex.base = base;
@@ -93,7 +92,7 @@ namespace nam {
     // floor(base * lo / scale) == floor(base * (hi) / scale) where hi is the
     // (exclusive-ish) upper bound. We refine the series until that holds.
     inline std::optional<uint32_t> next_digit(DigitExtractor &ex) {
-        BigInt B = BigInt(ex.base);
+        const BigInt B = BigInt(ex.base);
         for (int iter = 0; iter < ex.max_refine_iters; ++iter) {
             // Always work from a freshly-synced interval so the bounds are
             // exact for the current series depth (no incremental rescale).
@@ -123,7 +122,7 @@ namespace nam {
     // Extract up to `n` digits, refining to a target width first so digit
     // commitment is robust. Returns the digits actually committed (may be
     // fewer than n if a boundary value stalls -- honest pending).
-    inline std::vector<uint32_t> extract_digits(DigitExtractor ex, int n) {
+    inline std::vector<uint32_t> extract_digits(DigitExtractor ex, const int n) {
         std::vector<uint32_t> out;
         out.reserve(n);
         for (int i = 0; i < n; ++i) {
@@ -138,7 +137,7 @@ namespace nam {
     // loop in next_digit() rarely has to step terms. Useful when the caller
     // knows up front how many digits it wants; this front-loads the BigInt
     // growth once instead of amortizing it across many small refinements.
-    inline std::vector<uint32_t> extract_digits_eager(DigitExtractor ex, int n) {
+    inline std::vector<uint32_t> extract_digits_eager(DigitExtractor ex, const int n) {
         // Converge to a comfortable margin (a few guard digits) before
         // committing, so boundary stalls are minimized.
         ex.vm.converge_to_digits(n + ex.consumed + 4);

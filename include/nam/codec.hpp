@@ -1,68 +1,51 @@
 // include/nam/codec.hpp
 //
-// M4: Codec layer -- base as projection, not baked into the number
-// (Section 3.5).
-//
-// The base lives in the `base` field. Changing base changes the projection,
-// not the number. We implement base conversion as a re-decoding wrapper:
-// we read enough source-base digits to pin the value to a sufficiently small
-// interval, then emit target-base digits.
-//
-// Phase 1 keeps this concrete and interval-honest: for sources whose value
-// is a fraction in [0,1) (Rational fractional streams, Sqrt fractional
-// streams scaled into [0,1)), reproject by repeated multiply-by-target-base
-// using a rational tracking of the consumed prefix. To stay exact for the
-// round-trip property tests we reproject *Rational* sources analytically
-// (re-seed make_rational with the new base) and provide a generic streaming
-// reprojector for arbitrary generators.
+// M4: Codec layer -- base as projection. With the NumberSpace model the
+// base is no longer baked into a machine's state, so reprojecting a
+// rational is just changing the space's base: the (p,q) state is
+// base-agnostic. We keep a generic streaming reprojector for arbitrary
+// generators whose state IS base-coupled (e.g. Sqrt's prefix register).
 #ifndef NAM_CODEC_HPP
 #define NAM_CODEC_HPP
 
-#include <cstdint>
 #include <vector>
 
-#include "abi.h"
+#include "number_space.hpp"
 #include "generator.hpp"
 #include "rational.hpp"
 
 namespace nam {
-    // Analytic reprojection for rationals: a rational keeps its identity under a
-    // base change; we simply rebuild the VM with the new codec. This is the
-    // cleanest demonstration that "base is a codec".
-    inline AutomatonVM rational_in_base(AutomatonVM rat, uint32_t new_base) {
-        // state[2] = p, state[1] = q  (as seeded by make_rational)
-        return make_rational(rat.state[2], rat.state[1], new_base);
+    // Rationals keep identity under base change: the (p,q) state is
+    // unchanged, only the NumberSpace's base differs. Provided for symmetry
+    // / clarity -- callers can equally just call ns.in_base(new_base).
+    inline NumberSpace rational_in_base(const NumberSpace &ns,
+                                        const uint32_t new_base) {
+        return ns.in_base(new_base);
     }
 
-    // Generic streaming reprojector. Reads `src` (a generator producing digits
-    // in src.base for a value in [0,1)) and emits digits in `target_base`.
-    //
-    // Implemented as a host-side helper (not an AutomatonVM step), because a
-    // faithful streaming reprojection needs a growing rational accumulator,
-    // which is a Phase-2 (series-tier) concern. For Phase 1 we expose it as a
-    // bounded host helper used in tests and by the rational fast path above.
+    // Generic streaming reprojector. Reads `src_digits` of a value in [0,1)
+    // produced by G under `src` space, forms the exact rational num/den,
+    // then emits `out_digits` of that rational in `target_base`.
     template<Generator G>
-    std::vector<uint32_t> reproject_digits(AutomatonVM src, uint32_t target_base,
-                                           int src_digits, int out_digits) {
-        // Read src_digits of the source value into an exact rational fraction
-        // num/den where den = src.base^src_digits.
-        // num/den is an exact lower bound on the value (it ignores the tail).
+    std::vector<uint32_t> reproject_digits(
+        const NumberSpace &src, typename G::State seed,
+        const uint32_t target_base, const int src_digits, const int out_digits) {
         uint64_t num = 0;
         uint64_t den = 1;
-        AutomatonVM s = src;
+        typename G::State s = seed;
         for (int i = 0; i < src_digits; ++i) {
-            NumVMStep r = G::step(s);
+            auto r = G::step(src, s);
             num = num * src.base + r.digit;
             den = den * src.base;
             s = r.next;
         }
 
-        // Now emit out_digits of num/den in target_base via the Rational VM.
         std::vector<uint32_t> out;
         out.reserve(out_digits);
-        AutomatonVM rv = make_rational(num, den, target_base);
+        const NumberSpace target = src.in_base(target_base);
+        Rational::State rv = make_rational_state(num, den);
         for (int i = 0; i < out_digits; ++i) {
-            NumVMStep r = Rational::step(rv);
+            auto r = Rational::step(target, rv);
             out.push_back(r.digit);
             rv = r.next;
         }

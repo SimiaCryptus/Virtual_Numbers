@@ -18,7 +18,6 @@
 #ifndef NAM_BIG_INT_HPP
 #define NAM_BIG_INT_HPP
 
-#include <cstdint>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -32,13 +31,13 @@ namespace nam {
     public:
         BigInt() = default;
 
-        BigInt(int64_t v) { assign_i64(v); }
+        BigInt(const int64_t v) { assign_i64(v); }
 
-        static BigInt from_u64(uint64_t v) {
+        static BigInt from_u64(const uint64_t v) {
             BigInt b;
             if (v != 0) {
                 b.mag_.push_back(static_cast<uint32_t>(v & 0xffffffffu));
-                uint32_t hi = static_cast<uint32_t>(v >> 32);
+                const uint32_t hi = static_cast<uint32_t>(v >> 32);
                 if (hi) b.mag_.push_back(hi);
             }
             return b;
@@ -50,8 +49,8 @@ namespace nam {
         // Bit-width of the magnitude (complexity-metric instrumentation).
         int bit_width() const {
             if (mag_.empty()) return 0;
-            uint32_t top = mag_.back();
-            int bits = 32 - count_leading_zeros32(top);
+            const uint32_t top = mag_.back();
+            const int bits = 32 - count_leading_zeros32(top);
             return static_cast<int>((mag_.size() - 1) * 32) + bits;
         }
 
@@ -66,7 +65,7 @@ namespace nam {
 
         friend bool operator<(const BigInt &a, const BigInt &b) {
             if (a.negative_ != b.negative_) return a.negative_;
-            int c = cmp_mag(a.mag_, b.mag_);
+            const int c = cmp_mag(a.mag_, b.mag_);
             return a.negative_ ? (c > 0) : (c < 0);
         }
 
@@ -89,7 +88,7 @@ namespace nam {
                 return r;
             }
             // Different signs: subtract smaller magnitude from larger.
-            int c = cmp_mag(a.mag_, b.mag_);
+            const int c = cmp_mag(a.mag_, b.mag_);
             BigInt r;
             if (c == 0) return r; // zero
             if (c > 0) {
@@ -175,13 +174,13 @@ namespace nam {
             for (size_t i = mag_.size(); i-- > 0;) {
                 v = (v << 32) | mag_[i];
             }
-            int64_t s = static_cast<int64_t>(v);
+            const int64_t s = static_cast<int64_t>(v);
             return negative_ ? -s : s;
         }
 
         // Parity / small-modulus helpers used by digit extraction without a
         // full divmod. Returns the value modulo a small positive divisor.
-        uint64_t mod_small(uint64_t d) const {
+        uint64_t mod_small(const uint64_t d) const {
             uint64_t rem = 0;
             for (size_t i = mag_.size(); i-- > 0;) {
                 // rem = (rem * 2^32 + limb) % d, computed in two 16-bit-safe
@@ -200,7 +199,7 @@ namespace nam {
             BigInt t = *this;
             t.negative_ = false;
             std::string out;
-            BigInt ten(10);
+            const BigInt ten(10);
             while (!t.is_zero()) {
                 BigInt r;
                 t = divmod(t, ten, r);
@@ -215,7 +214,7 @@ namespace nam {
         std::vector<uint32_t> mag_; // little-endian base-2^32, no leading zeros
         bool negative_ = false;
 
-        static int count_leading_zeros32(uint32_t x) {
+        static int count_leading_zeros32(const uint32_t x) {
             int n = 0;
             for (int i = 31; i >= 0; --i) {
                 if (x & (1u << i)) break;
@@ -224,15 +223,15 @@ namespace nam {
             return n;
         }
 
-        void assign_i64(int64_t v) {
+        void assign_i64(const int64_t v) {
             mag_.clear();
             negative_ = v < 0;
-            uint64_t u = negative_
-                             ? static_cast<uint64_t>(-(v + 1)) + 1
+            const uint64_t u = negative_
+                                   ? static_cast<uint64_t>(-(v + 1)) + 1
                              : static_cast<uint64_t>(v);
             if (u) {
                 mag_.push_back(static_cast<uint32_t>(u & 0xffffffffu));
-                uint32_t hi = static_cast<uint32_t>(u >> 32);
+                const uint32_t hi = static_cast<uint32_t>(u >> 32);
                 if (hi) mag_.push_back(hi);
             }
             if (mag_.empty()) negative_ = false;
@@ -256,7 +255,7 @@ namespace nam {
         static std::vector<uint32_t> add_mag(const std::vector<uint32_t> &a,
                                              const std::vector<uint32_t> &b) {
             std::vector<uint32_t> r;
-            size_t n = std::max(a.size(), b.size());
+            const size_t n = std::max(a.size(), b.size());
             uint64_t carry = 0;
             for (size_t i = 0; i < n; ++i) {
                 uint64_t s = carry;
@@ -293,8 +292,8 @@ namespace nam {
             for (size_t i = 0; i < a.size(); ++i) {
                 uint64_t carry = 0;
                 for (size_t j = 0; j < b.size(); ++j) {
-                    uint64_t cur = acc[i + j] +
-                                   static_cast<uint64_t>(a[i]) * b[j] + carry;
+                    const uint64_t cur = acc[i + j] +
+                                         static_cast<uint64_t>(a[i]) * b[j] + carry;
                     acc[i + j] = cur & 0xffffffffu;
                     carry = cur >> 32;
                 }
@@ -302,7 +301,7 @@ namespace nam {
             }
             std::vector<uint32_t> r;
             r.reserve(acc.size());
-            for (uint64_t v: acc) r.push_back(static_cast<uint32_t>(v));
+            for (const uint64_t v: acc) r.push_back(static_cast<uint32_t>(v));
             while (!r.empty() && r.back() == 0) r.pop_back();
             return r;
         }
@@ -321,11 +320,11 @@ namespace nam {
             }
             // Fast path: single-limb divisor -> short division, O(n).
             if (b.size() == 1) {
-                uint64_t d = b[0];
+                const uint64_t d = b[0];
                 std::vector<uint32_t> q(a.size(), 0);
                 uint64_t r = 0;
                 for (size_t i = a.size(); i-- > 0;) {
-                    uint64_t cur = (r << 32) | a[i];
+                    const uint64_t cur = (r << 32) | a[i];
                     q[i] = static_cast<uint32_t>(cur / d);
                     r = cur % d;
                 }
@@ -336,7 +335,7 @@ namespace nam {
             // Bit-at-a-time restoring division. Adequate for Phase 2 sizes.
             std::vector<uint32_t> q(a.size(), 0);
             std::vector<uint32_t> r; // remainder accumulator
-            int total_bits = static_cast<int>(a.size()) * 32;
+            const int total_bits = static_cast<int>(a.size()) * 32;
             for (int i = total_bits - 1; i >= 0; --i) {
                 shl1(r);
                 if (get_bit(a, i)) set_bit(r, 0);
@@ -350,14 +349,14 @@ namespace nam {
             return q;
         }
 
-        static bool get_bit(const std::vector<uint32_t> &v, int i) {
-            size_t limb = i >> 5;
+        static bool get_bit(const std::vector<uint32_t> &v, const int i) {
+            const size_t limb = i >> 5;
             if (limb >= v.size()) return false;
             return (v[limb] >> (i & 31)) & 1u;
         }
 
-        static void set_bit(std::vector<uint32_t> &v, int i) {
-            size_t limb = i >> 5;
+        static void set_bit(std::vector<uint32_t> &v, const int i) {
+            const size_t limb = i >> 5;
             if (limb >= v.size()) v.resize(limb + 1, 0);
             v[limb] |= (1u << (i & 31));
         }
@@ -365,7 +364,7 @@ namespace nam {
         static void shl1(std::vector<uint32_t> &v) {
             uint32_t carry = 0;
             for (size_t i = 0; i < v.size(); ++i) {
-                uint32_t next = (v[i] >> 31) & 1u;
+                const uint32_t next = (v[i] >> 31) & 1u;
                 v[i] = (v[i] << 1) | carry;
                 carry = next;
             }

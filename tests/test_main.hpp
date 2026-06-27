@@ -34,7 +34,7 @@ namespace namtest {
         }
     };
 
-    inline void check(bool cond, const char *expr, const char *file, int line) {
+    inline void check(const bool cond, const char *expr, const char *file, const int line) {
         if (!cond) {
             std::printf("  FAIL: %s  (%s:%d)\n", expr, file, line);
             ++failures();
