@@ -2,3 +2,5 @@
 .idea
 build/
 cmake-build-debug/
+build-wasm/
+CMakeFiles/

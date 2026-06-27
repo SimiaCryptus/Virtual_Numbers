@@ -92,16 +92,16 @@ the requested precision.
 
 ## Build & test
 
- ```sh
- # Dependencies (Debian/Ubuntu). Only build tooling is required for the core;
- # the zstd/zlib/edit/curl packages are for the optional LLVM JIT backend.
- sudo apt update && sudo apt install -y \
-     build-essential ninja-build cmake \
-     libzstd-dev zlib1g-dev libedit-dev libcurl4-openssl-dev
+```sh
+# Dependencies (Debian/Ubuntu). Only build tooling is required for the core;
+# the zstd/zlib/edit/curl packages are for the optional LLVM JIT backend.
+sudo apt update && sudo apt install -y \
+ build-essential ninja-build cmake \
+  libzstd-dev zlib1g-dev libedit-dev libcurl4-openssl-dev llvm-dev llvm
 
- rm -rf build && cmake -S . -B build -G Ninja && cmake --build build
- ctest --test-dir build --output-on-failure
- ```
+rm -rf build && cmake -S . -B build -G Ninja && cmake --build build
+ctest --test-dir build --output-on-failure
+```
 
 The core library has **zero external dependencies** by default: arbitrary
 precision is provided by a vendored `nam::BigInt`, bounded integers by
@@ -114,6 +114,7 @@ upgrades are gated behind CMake flags:
 | `-DNAM_USE_GMP=ON`        | Use GMP `mpz_t` for the series tier accumulators | off     |
 | `-DNAM_USE_LLVM_JIT=ON`   | Real LLVM ORC v2 JIT backend (vs interpreter)    | off     |
 | `-DNAM_BUILD_PYTHON=ON`   | Build the pybind11 user-layer bindings           | off     |
+| `-DNAM_BUILD_WASM=ON`     | Build the Emscripten/embind WebAssembly bindings | off     |
 | `-DNAM_SANITIZE=ON`       | ASan + UBSan on the test target                  | **on**  |
 
  ---
@@ -211,7 +212,43 @@ maps to Python tri-state (`True | False | None`), fork cost is annotated by
 tier (`fork_cost()`), memoization is an explicit mode (`.streaming()` /
 `.cached(N)`), and `precision_context(digits=N)` is a scoped context manager.
 
+## WebAssembly bindings (Phase 3 user layer, JS/WASM)
+
+The same ergonomic user layer compiles to WebAssembly via Emscripten +
+embind. Because the core is header-only with zero dependencies, the WASM
+target is a thin binding shim — no GMP/LLVM required. It is off by default;
+enable it with `-DNAM_BUILD_WASM=ON` under the Emscripten toolchain:
+
+```sh
+# Requires the Emscripten SDK (emsdk) activated in the current shell.
+emcmake cmake -S . -B build-wasm -G Ninja -DNAM_BUILD_WASM=ON
+cmake --build build-wasm
+node build-wasm/bindings/wasm/example.js
+node build-wasm/bindings/wasm/test_nam_wasm.js
+```
+
+The `bindings/wasm/nam.js` wrapper turns the raw embind surface into an
+idiomatic JS API:
+
+```js
+const createNam = require('./nam_wasm.js');
+const nam = await require('./nam.js')(createNam);
+nam.rational(1, 7, 10).digits(12);          // [1,4,2,8,5,7,1,4,2,8,5,7]
+nam.rational(1, 4, 10).in_base(2).digits(4); // [0,1,0,0]
+nam.rational(1, 7, 10).definitely_less_than(nam.rational(1, 3, 10), 5); // true
+nam.precision_context(50, () => nam.e(10).digits());  // scoped, RAII
+```
+
+The honesty commitments cross the WASM boundary unchanged: comparison maps
+to JS tri-state (`-1 | 1 | null` for `compare`, `true | false | null` for
+`definitely_less_than`), fork cost is annotated by tier (`fork_cost()`),
+memoization is an explicit mode (`.streaming()` / `.cached(N)`), and
+`precision_context(digits, fn)` runs `fn` inside a scoped RAII precision
+context (restored even if `fn` throws).
 ---
+
+---
+
 
 ## Debugging a hang
 
@@ -301,6 +338,7 @@ gdb ./build-debug/tests/nam_tests
 | P2 Memo           | `nam/memo.hpp`                        | explicit bounded LRU, no hidden global state     |
 | P3 User API       | `nam/number.hpp`                      | `Number` type, precision contexts, fork cost     |
 | P4 JIT / Expr     | `nam/expr.hpp`, `nam/jit.hpp`         | `compile(expr) -> NumVMFn`, interp + LLVM paths  |
+| P3 WASM           | `bindings/wasm/*`                     | Emscripten/embind JS bindings, same user surface |
 
  ---
 
@@ -378,3 +416,36 @@ These hold across every tier and language binding.
   function pointer rather than corrupting any ABI field.
 - Both the interpreter and LLVM backends **reproduce the static digit stream
   exactly** — verified digit-for-digit in the Phase 4 tests.
+
+
+## Dependency: Emscripten
+
+```bash
+# Clone the emsdk
+cd ~
+git clone https://github.com/emscripten-core/emsdk.git
+cd emsdk
+
+# Download and install the latest SDK
+./emsdk install latest
+./emsdk activate latest
+
+# Set up environment variables in your current shell
+source ./emsdk_env.sh
+```
+
+Then configure your CMake build pointing to the toolchain file:
+
+```bash
+clear
+source ~/emsdk/emsdk_env.sh
+emcmake cmake -S . -B build-wasm -G Ninja -DNAM_BUILD_WASM=ON
+cmake --build build-wasm
+```
+
+Even easier — use the `emcmake` wrapper which auto-sets the toolchain:
+
+```bash
+emcmake cmake .. -DNAM_BUILD_WASM=ON
+emmake make
+```

@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & test (${{ matrix.os }}, ${{ matrix.compiler }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+        compiler: [ gcc, clang ]
+        include:
+          - compiler: gcc
+            cc: gcc
+            cxx: g++
+          - compiler: clang
+            cc: clang
+            cxx: clang++
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential ninja-build cmake \
+            libzstd-dev zlib1g-dev libedit-dev libcurl4-openssl-dev
+
+      - name: Configure
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: cmake -S . -B build -G Ninja
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        # Hard timeout so a hang fails fast instead of blocking CI forever
+        # (per README "Debugging a hang"). ctest exits 124 on a hang.
+        run: |
+          ctest --test-dir build --output-on-failure \
+            --output-junit results.xml \
+            --test-output-size-passed 0 \
+            --timeout 120
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}-${{ matrix.compiler }}
+          path: build/results.xml
+          if-no-files-found: ignore
+
+  build-python:
+    name: Build Python bindings
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential ninja-build cmake
+          python -m pip install --upgrade pip pybind11
+
+      - name: Configure (Python bindings on)
+        run: cmake -S . -B build -G Ninja -DNAM_BUILD_PYTHON=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Run Python example & tests
+        run: |
+          PYTHONPATH=build/bindings python3 bindings/example.py
+          PYTHONPATH=build/bindings python3 bindings/test_nam_py.py
