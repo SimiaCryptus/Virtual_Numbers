@@ -37,6 +37,8 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             --muted: #5a6472;
             --panel: #11151f;
             --border: #1c2230;
+            --keypad: #161b27;
+            --keypad-hover: #1f2738;
         }
 
         html, body {
@@ -133,6 +135,67 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             opacity: 0.5;
             cursor: not-allowed;
         }
+        /* ---- calculator display ---- */
+        .display {
+            background: #060810;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-bottom: 14px;
+        }
+        .display .disp-label {
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .display .disp-value {
+            font-size: 22px;
+            color: var(--ok);
+            word-break: break-all;
+            min-height: 28px;
+            margin-top: 2px;
+        }
+        .display .disp-sub {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 4px;
+            min-height: 16px;
+        }
+        /* ---- keypad ---- */
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-top: 10px;
+        }
+        .keypad button {
+            margin-top: 0;
+            background: var(--keypad);
+            color: var(--fg);
+            border: 1px solid var(--border);
+            font-weight: 500;
+            padding: 12px 0;
+            font-size: 16px;
+        }
+        .keypad button:hover {
+            background: var(--keypad-hover);
+        }
+        .keypad button.op {
+            color: var(--accent);
+        }
+        .keypad button.wide {
+            grid-column: span 2;
+        }
+        .keypad button.act {
+            background: var(--accent);
+            color: #04121f;
+            font-weight: 600;
+        }
+        .keypad button.danger {
+            color: var(--err);
+        }
+
 
         .row {
             display: flex;
@@ -162,6 +225,36 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             overflow: auto;
             font-size: 13px;
         }
+        .reg-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 4px 6px;
+            border-radius: 5px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+        }
+        .reg-item:hover {
+            background: var(--keypad-hover);
+        }
+        .reg-item .reg-val {
+            color: var(--fg);
+            opacity: 0.8;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 60%;
+        }
+        .reg-item .reg-drop {
+            color: var(--err);
+            opacity: 0;
+            font-weight: 700;
+            padding: 0 4px;
+        }
+        .reg-item:hover .reg-drop {
+            opacity: 0.8;
+        }
+
 
         #out {
             white-space: pre-wrap;
@@ -230,6 +323,15 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             padding: 1px 9px;
             color: var(--accent);
         }
+        /* clickable target hint */
+        .target-active {
+            outline: 2px solid var(--accent);
+        }
+        .hint {
+            color: var(--muted);
+            font-size: 11px;
+            margin: 2px 0 0;
+        }
     </style>
 </head>
 <body>
@@ -246,6 +348,50 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
 <div class="wrap">
     <!-- ============ controls ============ -->
     <div class="panel controls">
+        <!-- calculator display -->
+        <div class="display">
+            <div class="disp-label">last result &nbsp;·&nbsp; register <code>_</code></div>
+            <div class="disp-value" id="dispValue">—</div>
+            <div class="disp-sub" id="dispSub">build a number to begin</div>
+        </div>
+        <!-- one-tap keypad: digit-stream length + quick ops on the
+             current target register (defaults to "_") -->
+        <fieldset>
+            <legend>keypad — operates on target register
+                <code id="targetLabel">_</code>
+            </legend>
+            <p class="hint">Click a register on the right to retarget.
+                Number keys set N (digit count); ops act immediately.</p>
+            <div class="keypad" id="keypad">
+                <button data-key="7">7</button>
+                <button data-key="8">8</button>
+                <button data-key="9">9</button>
+                <button class="op" data-keyop="digits">digits</button>
+                <button data-key="4">4</button>
+                <button data-key="5">5</button>
+                <button data-key="6">6</button>
+                <button class="op" data-keyop="string">string</button>
+                <button data-key="1">1</button>
+                <button data-key="2">2</button>
+                <button data-key="3">3</button>
+                <button class="op" data-keyop="skip">skip</button>
+                <button data-key="0">0</button>
+                <button data-keyclear="1">CE</button>
+                <button class="op" data-keyop="fork">fork</button>
+                <button class="op" data-keyop="in_base">base→</button>
+                <button class="op wide" data-keyop="cached">cached</button>
+                <button class="op" data-keyop="streaming">stream</button>
+                <button class="op" data-keyop="fork_cost">cost</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+                <div class="col"><label for="keyN">N / K / base</label>
+                    <input id="keyN" type="number" value="12"/></div>
+                <div class="col"><label for="keyStore">store ›</label>
+                    <input class="store" id="keyStore" placeholder="name"
+                           type="text"/></div>
+            </div>
+        </fieldset>
+
         <h2>Constructors</h2>
 
         <fieldset>
@@ -316,7 +462,7 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
 
         <h2>Inspect / transform</h2>
         <fieldset>
-            <legend>operate on a register</legend>
+            <legend>operate on a register (advanced)</legend>
             <div class="row">
                 <div class="col"><label for="tReg">register</label>
                     <input id="tReg" type="text" value="_"/></div>
@@ -428,14 +574,41 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
     const out = $('out');
     const varsBox = $('vars');
     const precPill = $('precPill');
+    const dispValue = $('dispValue');
+    const dispSub = $('dispSub');
+    const targetLabel = $('targetLabel');
 
     // ---- module + register state ------------------------------------
     let nam = null;
     const regs = Object.create(null); // name -> wrapped Number
+    let targetReg = '_';               // register the keypad acts on
 
     function setLast(num) {
         regs['_'] = num;
+        updateDisplay();
         return num;
+    }
+    function setTarget(name) {
+        targetReg = name;
+        targetLabel.textContent = name;
+        $('tReg').value = name;
+        updateDisplay();
+        refreshVars();
+    }
+    function updateDisplay() {
+        const t = regs[targetReg] || regs['_'];
+        if (!t) {
+            dispValue.textContent = '—';
+            dispSub.textContent = 'build a number to begin';
+            return;
+        }
+        dispValue.textContent = t.toString();
+        try {
+            dispSub.textContent =
+                `base ${t.base()} · fork cost ${t.fork_cost()}`;
+        } catch (_) {
+            dispSub.textContent = '';
+        }
     }
 
     function lookup(name) {
@@ -485,10 +658,25 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             varsBox.textContent = '(no registers)';
             return;
         }
-        varsBox.innerHTML = names
-            .map((k) => `<span class="reg">${escapeHtml(k)}</span> = ` +
-                escapeHtml(regs[k].toString()))
-            .join('\n');
+        varsBox.innerHTML = '';
+        for (const k of names) {
+            const item = document.createElement('div');
+            item.className = 'reg-item';
+            if (k === targetReg) item.classList.add('target-active');
+            item.title = `click to target "${k}"`;
+            item.innerHTML =
+                `<span class="reg">${escapeHtml(k)}</span>` +
+                `<span class="reg-val">${escapeHtml(regs[k].toString())}</span>` +
+                `<span class="reg-drop" title="drop">✕</span>`;
+            item.addEventListener('click', (ev) => {
+                if (ev.target.classList.contains('reg-drop')) {
+                    if (k !== '_') runCommand(`drop ${k}`);
+                    return;
+                }
+                setTarget(k);
+            });
+            varsBox.appendChild(item);
+        }
     }
 
     // ---- constructor dispatch (shared by GUI + console) -------------
@@ -741,6 +929,7 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
         }
         refreshVars();
         refreshPrecision();
+        updateDisplay();
     }
 
     // ---- GUI button wiring (translated to console grammar) ----------
@@ -825,6 +1014,61 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
             });
         }
     }
+    // ---- keypad: standard-calculator-style mouse interactions -------
+    function wireKeypad() {
+        // digit keys append to the N field
+        for (const btn of document.querySelectorAll('[data-key]')) {
+            btn.addEventListener('click', () => {
+                const cur = $('keyN').value === '0' ? '' : $('keyN').value;
+                $('keyN').value = cur + btn.dataset.key;
+            });
+        }
+        // clear-entry
+        for (const btn of document.querySelectorAll('[data-keyclear]')) {
+            btn.addEventListener('click', () => {
+                $('keyN').value = '0';
+            });
+        }
+        // operation keys act on the current target register
+        for (const btn of document.querySelectorAll('[data-keyop]')) {
+            btn.addEventListener('click', () => {
+                const op = btn.dataset.keyop;
+                const reg = targetReg;
+                const n = $('keyN').value.trim();
+                const sv = $('keyStore').value.trim();
+                const store = sv ? ` >${sv}` : '';
+                let cmd;
+                switch (op) {
+                    case 'digits':
+                    case 'string':
+                        cmd = `${op} ${reg} ${n}`;
+                        break;
+                    case 'skip':
+                    case 'cached':
+                        cmd = `${op} ${reg} ${n}${store}`;
+                        break;
+                    case 'in_base':
+                        cmd = `in_base ${reg} ${n}${store}`;
+                        break;
+                    case 'fork':
+                        cmd = `fork ${reg}`;
+                        break;
+                    case 'fork_cost':
+                        cmd = `fork_cost ${reg}`;
+                        break;
+                    case 'streaming':
+                        cmd = `streaming ${reg}${store}`;
+                        break;
+                }
+                runCommand(cmd);
+            });
+        }
+        // keep keypad target in sync if user edits tReg directly
+        $('tReg').addEventListener('change', () => {
+            const v = $('tReg').value.trim() || '_';
+            setTarget(v);
+        });
+    }
     function wireArithmetic() {
         for (const btn of document.querySelectorAll('[data-arith]')) {
             btn.addEventListener('click', () => {
@@ -873,6 +1117,7 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
     nam = await loadNam(createNam);
     refreshPrecision();
     refreshVars();
+    updateDisplay();
     logOk('module ready — build a number or type a command. ' +
         'The last result is always in register "_".');
 
@@ -880,6 +1125,7 @@ nam_wasm.js + nam_wasm.wasm + nam.js must sit beside this file.
     wireOps();
     wireComparisons();
     wireArithmetic();
+    wireKeypad();
 </script>
 </body>
 </html>
