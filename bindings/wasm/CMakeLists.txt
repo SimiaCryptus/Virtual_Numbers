@@ -33,6 +33,7 @@ target_link_options(nam_wasm PRIVATE
         "--bind"
         "-sMODULARIZE=1"
         "-sEXPORT_NAME=createNam"
+         "-sEXPORT_ES6=1"
         "-sALLOW_MEMORY_GROWTH=1"
          "-sENVIRONMENT=node,web")
 set_target_properties(nam_wasm PROPERTIES OUTPUT_NAME "nam_wasm")

@@ -9,17 +9,20 @@
 //     `fn` inside a scoped, RAII precision context (nesting-safe).
 //   - comparison stays interval-honest: -1 | 1 | null and true | false | null.
 //
-// Usage (Node):
-//   const createNam = require('./nam_wasm.js');
-//   const nam = await require('./nam.js')(createNam);
-//   console.log(nam.rational(1, 7, 10).digits(12));
+// This file is an ES module (matching the -sEXPORT_ES6=1 WASM glue), so it
+// can be `import`ed directly in the browser:
 //
-// Usage (browser / ES module): import the factory and await it the same way.
+//   import createNam from './nam_wasm.js';
+//   import loadNam   from './nam.js';
+//   const nam = await loadNam(createNam);
+//
+// In Node (ESM), use the same `import` form, or a dynamic import:
+//   const loadNam = (await import('./nam.js')).default;
 'use strict';
 
 // `moduleFactory` is the Emscripten MODULARIZE factory (default export of
 // nam_wasm.js). Returns a promise resolving to the ergonomic facade.
-module.exports = async function loadNam(moduleFactory) {
+export default async function loadNam(moduleFactory) {
     const M = await moduleFactory();
 
     // Convert an embind DigitVector into a plain JS Array, freeing the
@@ -36,11 +39,21 @@ module.exports = async function loadNam(moduleFactory) {
     function wrap(raw) {
         return {
             _raw: raw,
-            base() { return raw.base(); },
-            fork_cost() { return raw.fork_cost(); },
-            in_base(b) { return wrap(raw.in_base(b)); },
-            streaming() { return wrap(raw.streaming()); },
-            cached(maxDigits) { return wrap(raw.cached(maxDigits)); },
+            base() {
+                return raw.base();
+            },
+            fork_cost() {
+                return raw.fork_cost();
+            },
+            in_base(b) {
+                return wrap(raw.in_base(b));
+            },
+            streaming() {
+                return wrap(raw.streaming());
+            },
+            cached(maxDigits) {
+                return wrap(raw.cached(maxDigits));
+            },
             fork() {
                 const arr = raw.fork();
                 return [wrap(arr[0]), wrap(arr[1])];
@@ -49,7 +62,9 @@ module.exports = async function loadNam(moduleFactory) {
                 const r = raw.skip(n);
                 return r === null ? null : wrap(r);
             },
-            next_digit() { return raw.next_digit(); },
+            next_digit() {
+                return raw.next_digit();
+            },
             digits(n) {
                 return n === undefined
                     ? toArray(raw.digits_ctx())
@@ -64,8 +79,12 @@ module.exports = async function loadNam(moduleFactory) {
             compare(other, maxDigits = 30) {
                 return raw.compare(other._raw, maxDigits);
             },
-            to_string(digits) { return raw.to_string(digits); },
-            toString() { return raw.repr(); },
+            to_string(digits) {
+                return raw.to_string(digits);
+            },
+            toString() {
+                return raw.repr();
+            },
         };
     }
 
@@ -91,6 +110,8 @@ module.exports = async function loadNam(moduleFactory) {
             }
         },
 
-        current_precision() { return M.current_precision(); },
+        current_precision() {
+            return M.current_precision();
+        },
     };
-};
+}

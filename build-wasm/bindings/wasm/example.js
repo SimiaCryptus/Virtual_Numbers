@@ -6,6 +6,10 @@
 //         cmake --build build-wasm
 // Run:    node bindings/wasm/example.js   (from the build output dir)
 'use strict';
+// For an in-browser visual demo of the p-adic ultrametric fractal, open
+// padic_fractal.html from the build output dir (served over HTTP so the
+// .wasm can be fetched), e.g. `python3 -m http.server`.
+
 
 const createNam = require('./nam_wasm.js');
 const loadNam = require('./nam.js');

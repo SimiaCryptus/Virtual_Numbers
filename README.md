@@ -61,34 +61,34 @@ the requested precision.
 
 ## Quick start
 
- ```cpp
- #include "nam/number.hpp"
- using namespace nam;
+```cpp
+#include "nam/number.hpp"
+using namespace nam;
 
- int main() {
-     // 1/7 = 0.(142857) — emit twelve digits.
-     Number r = Number::rational(1, 7, 10);
-     auto ds = r.digits(12);                 // {1,4,2,8,5,7,1,4,2,8,5,7}
+int main() {
+ // 1/7 = 0.(142857) — emit twelve digits.
+ Number r = Number::rational(1, 7, 10);
+ auto ds = r.digits(12);                 // {1,4,2,8,5,7,1,4,2,8,5,7}
 
-     // Base is a codec, not part of the value: 1/4 in base 2 is 0.01.
-     Number quarter = Number::rational(1, 4, 10);
-     quarter.in_base(2).digits(4);           // {0,1,0,0}
+ // Base is a codec, not part of the value: 1/4 in base 2 is 0.01.
+ Number quarter = Number::rational(1, 4, 10);
+ quarter.in_base(2).digits(4);           // {0,1,0,0}
 
-     // Fork is O(1) and exact for the automaton tier.
-     auto [a, b] = r.fork();
-     bool same = (a.digits(20) == b.digits(20));   // true
+ // Fork is O(1) and exact for the automaton tier.
+ auto [a, b] = r.fork();
+ bool same = (a.digits(20) == b.digits(20));   // true
 
-     // Transcendentals stream from the series tier (1/e = 0.36787944...).
-     Number inv_e = Number::one_over_e(10);
-     inv_e.digits(6);                        // {3,6,7,8,7,9}
+ // Transcendentals stream from the series tier (1/e = 0.36787944...).
+ Number inv_e = Number::one_over_e(10);
+ inv_e.digits(6);                        // {3,6,7,8,7,9}
 
-     // Interval-honest comparison: 1/7 < 1/3.
-     Number third = Number::rational(1, 3, 10);
-     r.compare(third, 5);                    // Trit::Less
- }
- ```
+ // Interval-honest comparison: 1/7 < 1/3.
+ Number third = Number::rational(1, 3, 10);
+ r.compare(third, 5);                    // Trit::Less
+}
+```
 
- ---
+---
 
 ## Build & test
 
@@ -439,6 +439,7 @@ Then configure your CMake build pointing to the toolchain file:
 ```bash
 clear
 source ~/emsdk/emsdk_env.sh
+rm -rf build build-wasm
 emcmake cmake -S . -B build-wasm -G Ninja -DNAM_BUILD_WASM=ON
 cmake --build build-wasm
 ```
