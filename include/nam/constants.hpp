@@ -20,6 +20,8 @@
 // exact-rescale invariant refine.hpp relies on).
 #ifndef NAM_CONSTANTS_HPP
 #define NAM_CONSTANTS_HPP
+#include <cstdio>
+#include <cstdlib>
 
 #include <memory>
 
@@ -286,6 +288,9 @@ namespace nam
                 // k=0: 1/1 = 1.
                 num = BigInt(1);
                 den = BigInt(1);
+                if (std::getenv("NAM_DEBUG_CATALAN"))
+                    std::fprintf(stderr,
+                                 "[catalan.advance] n=0 -> num=1 den=1\n");
                 return;
             }
             // New denominator = den * (2n+1)^2.
@@ -296,6 +301,13 @@ namespace nam
             if (n % 2 == 0) num += den;
             else num -= den;
             den = newden;
+            if (std::getenv("NAM_DEBUG_CATALAN"))
+                std::fprintf(stderr,
+                             "[catalan.advance] n=%llu odd=%llu sign=%c "
+                             "num.bits=%d den.bits=%d\n",
+                             (unsigned long long)n, (unsigned long long)odd,
+                             (n % 2 == 0) ? '+' : '-',
+                             num.bit_width(), den.bit_width());
         };
         spec->tail_bound = [](uint64_t n, const BigInt& den)
         {
@@ -338,6 +350,12 @@ namespace nam
             // accumulator implicitly by doubling the bound (the extractor
             // only commits a digit when the whole widened interval agrees,
             // which is interval-honest and never commits a wrong digit).
+            if (std::getenv("NAM_DEBUG_CATALAN"))
+                std::fprintf(stderr,
+                             "[catalan.tail] n=%llu odd=%llu bound.bits=%d "
+                             "den.bits=%d returning 2*bound\n",
+                             (unsigned long long)n, (unsigned long long)odd,
+                             bound.bit_width(), den.bit_width());
             return bound + bound;
         };
         return spec;
