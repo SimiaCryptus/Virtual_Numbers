@@ -54,4 +54,6 @@ const loadNam = require('./nam.js');
 
     // Rendering.
     console.log('1/4 ->', nam.rational(1, 4, 10).to_string(4));
+    // Catalan's constant (slowly-converging series).
+    console.log('Catalan ->', nam.catalan(10).digits(8));
 })();

@@ -487,6 +487,20 @@ NAM_TEST (extract_pi_quarter_digits)
         CHECK(digits[i] == expect[i]);
     }
 }
+NAM_TEST (extract_catalan_digits)
+{
+    // Catalan's constant G = 0.9159655941...  value in [0,1).
+    SeriesVM vm = make_catalan(10);
+    DigitExtractor ex = make_extractor(vm, 10);
+    auto digits = extract_digits(ex, 6);
+    const uint32_t expect[] = {9, 1, 5, 9, 6, 5};
+    CHECK(digits.size() >= 6);
+    for (size_t i = 0; i < digits.size() && i < 6; ++i)
+    {
+        CHECK(digits[i] == expect[i]);
+    }
+}
+
 
 NAM_TEST (extract_eager_matches_lazy)
 {
@@ -643,6 +657,31 @@ NAM_TEST (user_pi_quarter_fork_is_log_n)
     auto [a, b] = n.fork();
     CHECK(a.digits(5) == b.digits(5));
 }
+NAM_TEST (user_catalan_digits)
+{
+    // Catalan's constant via the user API -> 0.9159655941...
+    Number n = Number::catalan(10);
+    auto ds = n.digits(6);
+    const uint32_t expect[] = {9, 1, 5, 9, 6, 5};
+    CHECK(ds.size() >= 6);
+    for (size_t i = 0; i < 6 && i < ds.size(); ++i)
+        CHECK(ds[i] == expect[i]);
+    CHECK(std::string(n.fork_cost()) == "O(log n)");
+}
+NAM_TEST (user_accumulator_bitwidth_probe)
+{
+    // Automaton tier reports 0 (constant state); series tier reports > 0
+    // after digits are consumed (growing accumulators).
+    Number rat = Number::rational(1, 7, 10);
+    CHECK(rat.accumulator_bitwidth() == 0);
+    Number e = Number::e(10);
+    e.digits(8); // drive the extractor / converge the series
+    // The Number itself does not advance series_ on digit emission (it forks
+    // an extractor), so probe a freshly-converged SeriesVM directly instead.
+    SeriesVM vm = make_e(10);
+    vm.converge_to_digits(8);
+    CHECK(vm.accumulator_bitwidth() > 0);
+}
 
 
 // ---------- Precision context (scoped, RAII, thread-local) ----------
@@ -754,6 +793,46 @@ NAM_TEST(user_to_string_render)
     Number half = Number::rational(1, 2, 16);
     CHECK(half.to_string(2) == "0.80");
 }
+// ---------- Digit statistics ----------
+NAM_TEST(user_digit_histogram)
+{
+    // 1/7 = 0.(142857): over 12 digits each of {1,4,2,8,5,7} appears twice.
+    Number n = Number::rational(1, 7, 10);
+    auto hist = n.digit_histogram(12);
+    CHECK(hist.size() == 10);
+    CHECK(hist[1] == 2);
+    CHECK(hist[4] == 2);
+    CHECK(hist[2] == 2);
+    CHECK(hist[8] == 2);
+    CHECK(hist[5] == 2);
+    CHECK(hist[7] == 2);
+    CHECK(hist[0] == 0);
+    CHECK(hist[3] == 0);
+    CHECK(hist[6] == 0);
+    CHECK(hist[9] == 0);
+    // The source is not consumed by the histogram (value semantics).
+    CHECK(n.digits(3) == (std::vector<uint32_t>{1, 4, 2}));
+}
+// ---------- New generator combinators ----------
+NAM_TEST(generator_take_while)
+{
+    // Emit digits of 1/7 while the digit is < 8: 1,4,2 then stop at 8.
+    AutomatonVM v = make_rational(1, 7, 10);
+    std::vector<uint32_t> out;
+    int got = take_while<Rational>(v, 20, std::back_inserter(out),
+                                   [](uint32_t d, int) { return d < 8; });
+    CHECK(got == 3);
+    CHECK(out == (std::vector<uint32_t>{1, 4, 2}));
+}
+NAM_TEST(generator_drop)
+{
+    // drop(2) of 1/7 lands on the state emitting 2,8,5...
+    AutomatonVM v = make_rational(1, 7, 10);
+    AutomatonVM dropped = drop<Rational>(v, 2);
+    NumVMStep r = Rational::step(dropped);
+    CHECK(r.digit == 2);
+}
+
 
 // ========================= PHASE 4: JIT / EXPR TREE =========================
 // The compile(expr_tree) -> NumVMFn primitive. The returned function pointer

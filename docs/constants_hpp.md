@@ -82,6 +82,14 @@ used here are standard textbook results:
   Mercator's *Logarithmotechnia*). The tail satisfies
   `Σ_{k>n} 1/(k·2^k) ≤ Σ_{k>n} 1/2^k = 1/2^n`, giving
   `err = den/2^n = n!`.
+- **Catalan's constant** `G = Σ_{k≥0} (−1)^k/(2k+1)^2`. This is a slowly
+  (linearly) convergent alternating series whose truncation error, by the
+  alternating series (Leibniz) test, is bounded by the first omitted term:
+  `|tail| ≤ 1/(2n+1)^2`. Over the running denominator (the product of the
+  squared odd numbers) this gives `err = den/(2n+1)^2`. Because the series
+  converges slowly, many terms are needed for high precision — a faithful
+  demonstration that the tail-bound oracle, not convergence speed, is what
+  guarantees honest digit commitment.
 
 ---
 
@@ -93,6 +101,7 @@ used here are standard textbook results:
 | `ln2_spec()`        | `0.69314…` | `Σ_{k≥1} 1/(k·2^k)`       |
 | `one_over_e_spec()` | `0.36787…` | `Σ_{k≥0} (−1)^k/k!`       |
 | `pi_quarter_spec()` | `0.78539…` | `arctan(1/2)+arctan(1/3)` |
+| `catalan_spec()`    | `0.91596…` | `Σ_{k≥0} (−1)^k/(2k+1)^2` |
 
 Convenience wrappers materialise a `SeriesVM` in a chosen radix:
 

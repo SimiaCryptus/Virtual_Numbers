@@ -68,6 +68,11 @@ function eq(a, b) {
             check(eq(n.digits(6), [7, 8, 5, 3, 9, 8]), 'pi/4 digits');
             check(n.fork_cost() === 'O(log n)', 'pi/4 series fork cost');
         },
+        test_catalan() {
+            const n = nam.catalan(10);
+            check(eq(n.digits(6), [9, 1, 5, 9, 6, 5]), 'catalan digits');
+            check(n.fork_cost() === 'O(log n)', 'catalan series fork cost');
+        },
     };
 
     let failures = 0;

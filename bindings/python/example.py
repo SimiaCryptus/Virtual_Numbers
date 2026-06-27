@@ -40,3 +40,5 @@ print("series skip is None:", nam.e(10).skip(10))  # None
 
 # Rendering.
 print("1/4 ->", nam.rational(1, 4, 10).to_string(4))
+# Catalan's constant (slowly-converging series, honest digit commitment).
+print("Catalan ->", nam.catalan(10).digits(8))

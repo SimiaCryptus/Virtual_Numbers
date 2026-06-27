@@ -139,11 +139,15 @@ PYBIND11_MODULE(nam, m)
                     "Series-tier 1/e.")
         .def_static("pi_quarter", &Number::pi_quarter, py::arg("base") = 10,
                     "Series-tier pi/4 (fractional value 0.7853...).");
+        number.def_static("catalan", &Number::catalan, py::arg("base") = 10,
+                          "Series-tier Catalan's constant (0.9159...).");
 
     // ----- Introspection -----
     number
         .def("tier", &Number::tier)
         .def("base", &Number::base)
+        .def("accumulator_bitwidth", &Number::accumulator_bitwidth,
+             "Series-tier live accumulator bit-width (0 for automata).")
         .def("fork_cost", &Number::fork_cost,
              "Honest fork-cost annotation: 'O(1)' (automaton) or "
              "'O(log n)' (series).");
@@ -229,4 +233,5 @@ PYBIND11_MODULE(nam, m)
     m.def("ln2", &Number::ln2, py::arg("base") = 10);
     m.def("one_over_e", &Number::one_over_e, py::arg("base") = 10);
     m.def("pi_quarter", &Number::pi_quarter, py::arg("base") = 10);
+    m.def("catalan", &Number::catalan, py::arg("base") = 10);
 }

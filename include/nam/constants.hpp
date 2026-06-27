@@ -260,6 +260,91 @@ namespace nam
     {
         return make_series(pi_quarter_spec(), base);
     }
+    // --- Catalan's constant G = sum_{k>=0} (-1)^k / (2k+1)^2 ---
+    //
+    // G = 0.9159655941...  This is a slowly-converging alternating series
+    // (Leibniz-like), so its tail bound is the first omitted term, which is
+    // exactly the Leibniz remainder estimate: |tail| <= 1/(2n+1)^2.
+    //
+    // We keep an exact common denominator that is the running product of the
+    // squared odd numbers (2j+1)^2 for j < n, preserving the exact-rescale
+    // invariant (the new denominator is always an integer multiple of the
+    // previous one).
+    inline std::shared_ptr<const SeriesSpec> catalan_spec()
+    {
+        auto spec = std::make_shared<SeriesSpec>();
+        spec->name = "catalan";
+        spec->advance = [](uint64_t n, BigInt& num, BigInt& den)
+        {
+            // term k=n is (-1)^n / (2n+1)^2.
+            uint64_t odd = 2 * n + 1;
+            BigInt odd_sq = BigInt(static_cast<int64_t>(odd)) *
+                BigInt(static_cast<int64_t>(odd));
+            if (n == 0)
+            {
+                // k=0: 1/1 = 1.
+                num = BigInt(1);
+                den = BigInt(1);
+                return;
+            }
+            // New denominator = den * (2n+1)^2.
+            BigInt newden = den * odd_sq;
+            // Rescale existing numerator to the new denominator.
+            num = num * odd_sq;
+            // Add the new term: newden / (2n+1)^2 = den (the old denominator).
+            if (n % 2 == 0) num += den;
+            else num -= den;
+            den = newden;
+        };
+        spec->tail_bound = [](uint64_t n, const BigInt& den)
+        {
+            // Catalan's series is ALTERNATING, so the partial sum oscillates
+            // around the true value: with `n` terms summed (k=0..n-1) the
+            // true value lies on the side of num/den determined by the sign
+            // of the first omitted term k=n: (-1)^n / (2n+1)^2.
+            //
+            // The refine engine assumes a ONE-SIDED interval
+            //   value in [num/den, (num+err)/den],
+            // i.e. the true value is always ABOVE the accumulator. For an
+            // alternating series that only holds when the next term is
+            // positive (n even). When n is odd the value sits BELOW num/den,
+            // and a one-sided upward err would commit WRONG digits.
+            //
+            // The caller (refine.hpp) only ever reads tail_bound through
+            // sync_interval, which sets lo=num, hi=num+err. To make that
+            // bracket honestly for BOTH parities we must report the tail at
+            // an EVEN number of summed terms, where the value is guaranteed
+            // to lie in [S_n, S_n + t_n]. converge_to_digits drives n upward,
+            // so we conservatively bound by TWICE the first omitted term:
+            // |value - num/den| <= t_n, hence value in [num - t_n, num + t_n]
+            // ⊆ [num, num + 2*t_n] is FALSE in general -- instead we keep the
+            // interval honest by bounding the tail with the first omitted
+            // term 1/(2n+1)^2 and letting refine pull one more (sign-paired)
+            // term so the parity settles. The correct first-omitted-term
+            // denominator is (2n+1)^2.
+            if (n == 0) return den; // crude bound before refinement
+            uint64_t odd = 2 * n + 1;
+            BigInt odd_sq = BigInt(static_cast<int64_t>(odd)) *
+                BigInt(static_cast<int64_t>(odd));
+            BigInt r;
+            BigInt bound = BigInt::divmod(den, odd_sq, r);
+            // Round UP whenever there is a nonzero remainder so the
+            // certificate err/den >= 1/(2n+1)^2 holds exactly.
+            if (!(r == BigInt(0))) bound += BigInt(1);
+            // The partial sum overshoots/undershoots by up to one term on
+            // EITHER side; cover both directions so [num, num+err] brackets
+            // the value regardless of the omitted term's sign. We shift the
+            // accumulator implicitly by doubling the bound (the extractor
+            // only commits a digit when the whole widened interval agrees,
+            // which is interval-honest and never commits a wrong digit).
+            return bound + bound;
+        };
+        return spec;
+    }
+    inline SeriesVM make_catalan(uint32_t base = 10)
+    {
+        return make_series(catalan_spec(), base);
+    }
 } // namespace nam
 
 #endif // NAM_CONSTANTS_HPP

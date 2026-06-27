@@ -141,6 +141,11 @@ namespace nam
         {
             return series(make_pi_quarter(base));
         }
+        // Catalan's constant G = 0.9159655941...
+        static Number catalan(uint32_t base = 10)
+        {
+            return series(make_catalan(base));
+        }
 
 
         static Number series(SeriesVM vm)
@@ -158,6 +163,16 @@ namespace nam
         {
             return tier_ == Tier::Automaton ? vm_.base : series_.base;
         }
+        // Series-tier complexity probe: live accumulator bit-width (memory IS
+        // the metric). Returns 0 for the automaton tier (constant state).
+        int accumulator_bitwidth() const
+        {
+            if (tier_ == Tier::Series) return series_.accumulator_bitwidth();
+            return 0;
+        }
+        // Generator-family tag for the automaton tier (informational).
+        Gen gen() const { return gen_; }
+
 
         // ----- Codec: base as projection (THEORY.md "in_base(b)") -----
         // Only the rational fast path is analytic; other automaton gens are
@@ -297,6 +312,24 @@ namespace nam
         {
             return digits(PrecisionContext::digits());
         }
+        // ----- Digit statistics (analysis convenience) -----
+        // Returns a frequency histogram over the first `n` emitted digits.
+        // histogram[d] is the count of digit value d. The vector length is
+        // the current base; entries for never-seen digits stay 0. A pending
+        // stall (series boundary) simply yields fewer counted digits.
+        std::vector<uint64_t> digit_histogram(int n)
+        {
+            std::vector<uint64_t> hist(base(), 0);
+            Number copy = *this;
+            for (int i = 0; i < n; ++i)
+            {
+                auto d = copy.next_digit();
+                if (!d.has_value()) break;
+                if (*d < hist.size()) ++hist[*d];
+            }
+            return hist;
+        }
+
 
         // ----- Honest comparison predicates -----
         // agrees_with: EXACT for a finite prefix of `digits` digits.
