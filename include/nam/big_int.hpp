@@ -43,11 +43,11 @@ namespace nam {
             return b;
         }
 
-        bool is_zero() const { return mag_.empty(); }
-        bool negative() const { return negative_; }
+        [[nodiscard]] bool is_zero() const { return mag_.empty (); }
+        [[nodiscard]] bool negative() const { return negative_; }
 
-        // Bit-width of the magnitude (complexity-metric instrumentation).
-        int bit_width() const {
+        // Bit-width of the[[nodiscard]]  magnitude (complexity-metri[[nodiscard]] c instrumentation).
+        [[nodiscard]] int bit_width() const {
             if (mag_.empty()) return 0;
             const uint32_t top = mag_.back();
             const int bits = 32 - count_leading_zeros32(top);
@@ -168,8 +168,8 @@ namespace nam {
             return q;
         }
 
-        // Convert to int64 (caller asserts it fits). For small results.
-        int64_t to_i64() const {
+        // Convert to int64 (caller ass[[nodiscard]] erts it fits). For small results.
+        [[nodiscard]] int64_t to_i64() const {
             uint64_t v = 0;
             for (size_t i = mag_.size(); i-- > 0;) {
                 v = (v << 32) | mag_[i];
@@ -178,9 +178,9 @@ namespace nam {
             return negative_ ? -s : s;
         }
 
-        // Parity / small-modulus helpers used by digit extraction without a
-        // full divmod. Returns the value modulo a small positive divisor.
-        uint64_t mod_small(const uint64_t d) const {
+        // Parity / small-modulus helpers used b[[nodiscard]] y digit extraction without a
+        // full divmod. Ret[[nodiscard]] urns the value modulo a small positive divisor.
+        [[nodiscard]] uint64_t mod_small(const uint64_t d) const {
             uint64_t rem = 0;
             for (size_t i = mag_.size(); i-- > 0;) {
                 // rem = (rem * 2^32 + limb) % d, computed in two 16-bit-safe
@@ -188,13 +188,13 @@ namespace nam {
                 rem = ((rem << 16) % d);
                 rem = ((rem << 16) | (mag_[i] >> 16)) % d;
                 rem = ((rem << 16) | (mag_[i] & 0xffffu)) % d;
-                // Reassemble: the above splits the 32-bit limb into halves.
+                // Reassemble: the above splits the 32-bit limb i[[nodiscard]] nto halves.
             }
             return rem;
         }
 
 
-        std::string to_string() const {
+        [[nodiscard]] std::string to_string() const {
             if (mag_.empty()) return "0";
             BigInt t = *this;
             t.negative_ = false;
@@ -208,6 +208,42 @@ namespace nam {
             if (negative_) out.push_back('-');
             std::reverse(out.begin(), out.end());
             return out;
+        }
+
+        // ---- Serialization helpers ----
+        // Expose the little-endian limb magnitude and sign so the[[nodiscard]]  JSON layer
+        // can round-trip arbitrary-precision values los[[nodiscard]] slessly (decimal[[nodiscard]]
+        // strings would also work but limb arrays avoid re-parsing[[nodiscard]]  cost).
+        [[nodiscard]] const std::vector<uint32_t> &limbs() const { return mag_; }
+        [[nodiscard]] bool sign() const { return negative_; }
+
+        static BigInt from_limbs(const std::vector<uint32_t> &limbs,
+                                 const bool negative) {
+            BigInt b;
+            b.mag_ = limbs;
+            b.normalize();
+            b.negative_ = negative && !b.mag_.empty();
+            return b;
+        }
+
+        // Parse a base-10 string (optionally signed) into a BigInt. Used as a
+        // human-readable serialization fallback.
+        static BigInt from_string(const std::string &str) {
+            BigInt result(0);
+            const BigInt ten(10);
+            size_t i = 0;
+            bool neg = false;
+            if (i < str.size() && (str[i] == '-' || str[i] == '+')) {
+                neg = str[i] == '-';
+                ++i;
+            }
+            for (; i < str.size(); ++i) {
+                const char c = str[i];
+                if (c < '0' || c > '9') break;
+                result = result * ten + BigInt(static_cast<int64_t>(c - '0'));
+            }
+            if (neg) result = -result;
+            return result;
         }
 
     private:

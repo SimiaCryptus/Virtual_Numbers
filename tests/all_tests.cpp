@@ -162,12 +162,11 @@ NAM_TEST(sqrt2_prefix_bitwidth_grows_log_n) {
 
 NAM_TEST(rational_base_change_is_codec) {
     // 1/4 = 0.25 in base 10, = 0.1 in base 4, = 0.01 in base 2.
-    const NumberSpace ns10{10};
+    constexpr NumberSpace ns10{10};
     const Rational::State st = make_rational_state(1, 4);
     {
-        const uint32_t e10[] = {2, 5, 0, 0};
         Rational::State v = st;
-        for (const uint32_t e: e10) {
+        for (constexpr uint32_t e10[] = {2, 5, 0, 0}; const uint32_t e: e10) {
             auto r = Rational::step(ns10, v);
             CHECK(r.digit == e);
             v = r.next;
@@ -175,35 +174,33 @@ NAM_TEST(rational_base_change_is_codec) {
     }
     const NumberSpace ns2 = ns10.in_base(2);
     {
-        const uint32_t e2[] = {0, 1, 0, 0};
         Rational::State v = st;
-        for (const uint32_t e: e2) {
-            auto r = Rational::step(ns2, v);
-            CHECK(r.digit == e);
-            v = r.next;
+        for (constexpr uint32_t e2[] = {0, 1, 0, 0}; const uint32_t e: e2) {
+            auto [digit, next] = Rational::step(ns2, v);
+            CHECK(digit == e);
+            v = next;
         }
     }
-    const NumberSpace ns4 = ns10.in_base(4);
+    constexpr NumberSpace ns4 = ns10.in_base(4);
     {
-        const uint32_t e4[] = {1, 0, 0, 0};
         Rational::State v = st;
-        for (const uint32_t e: e4) {
-            auto r = Rational::step(ns4, v);
-            CHECK(r.digit == e);
-            v = r.next;
+        for (constexpr uint32_t e4[] = {1, 0, 0, 0}; const uint32_t e: e4) {
+            auto [digit, next] = Rational::step(ns4, v);
+            CHECK(digit == e);
+            v = next;
         }
     }
 }
 
 NAM_TEST(codec_roundtrip_reproject) {
     // Reproject 1/3 base 10 -> base 7 -> back, agree to N digits.
-    const NumberSpace ns{10};
+    constexpr NumberSpace ns{10};
     const Rational::State src = make_rational_state(1, 3);
     // Read 12 base-10 digits, emit base-7 digits.
     const auto b7 = reproject_digits<Rational>(ns, src, 7, 12, 6);
     // 1/3 in base 7 = 0.222222... (since 1/3 = 2/7 + 2/49 + ...).
-    for (size_t i = 0; i < b7.size(); ++i)
-        CHECK(b7[i] == 2);
+    for (unsigned int i : b7)
+        CHECK(i == 2);
 }
 
 // ---------- M5: p-adics ----------
@@ -213,9 +210,9 @@ NAM_TEST(padic_minus_one_in_z5_is_all_fours) {
     const NumberSpace ns = padic_space(5);
     PAdic::State v = make_padic_state(-1, 1);
     for (int i = 0; i < 10; ++i) {
-        const auto r = PAdic::step(ns, v);
-        CHECK(r.digit == 4);
-        v = r.next;
+        const auto [digit, next] = PAdic::step(ns, v);
+        CHECK(digit == 4);
+        v = next;
     }
 }
 
@@ -835,6 +832,191 @@ NAM_TEST(arith_value_semantics_preserved) {
 }
 
 // ========================= PHASE 4: JIT / EXPR TREE =========================
+// ========================= SERIALIZATION + SEED CONFIGS =====================
+NAM_TEST(json_roundtrip_primitives) {
+    json::Object o;
+    o["n"] = json::Value(static_cast<int64_t>(-42));
+    o["s"] = json::Value("hi\"there");
+    o["b"] = json::Value(true);
+    json::Array a;
+    a.emplace_back(1);
+    a.emplace_back(2);
+    o["a"] = json::Value(std::move(a));
+    const std::string text = json::dump(json::Value(std::move(o)));
+    const json::Value back = json::parse(text);
+    CHECK(back.at("n").as_int() == -42);
+    CHECK(back.at("s").as_str() == "hi\"there");
+    CHECK(back.at("b").b == true);
+    CHECK(back.at("a").as_arr().size() == 2);
+    CHECK(back.at("a").as_arr()[1].as_int() == 2);
+}
+
+NAM_TEST(bigint_json_roundtrip_lossless) {
+    const BigInt big = big_pow(BigInt(2), 200) + BigInt(12345);
+    const json::Value v = to_json(big);
+    const BigInt back = big_int_from_json(v);
+    CHECK(back == big);
+    // Negative values too.
+    const BigInt neg = -big;
+    CHECK(big_int_from_json(to_json(neg)) == neg);
+}
+
+NAM_TEST(bigint_from_string) {
+    CHECK(BigInt::from_string("123456789012345678901234567890")
+         == big_pow(BigInt(10), 28) * BigInt(12)
+        + BigInt::from_string("3456789012345678901234567890"));
+    CHECK(BigInt::from_string("-42") == BigInt(-42));
+}
+
+NAM_TEST(seed_config_rational_roundtrip) {
+    const SeedConfig cfg = SeedConfig::rational(1, 7, 10);
+    const std::string text = to_json_string(cfg);
+    const SeedConfig back = seed_config_from_json_string(text);
+    CHECK(back.gen == SeedGen::Rational);
+    CHECK(back.space.base == 10);
+    // Materialize both and compare digit prefixes -- must be EXACT.
+    Number a = Number::from_seed(cfg);
+    Number b = Number::from_seed(back);
+    CHECK(a.digits(12) == b.digits(12));
+}
+
+NAM_TEST(seed_config_sqrt_roundtrip) {
+    const SeedConfig cfg = SeedConfig::sqrt(2, 10);
+    const SeedConfig back = seed_config_from_json_string(to_json_string(cfg));
+    CHECK(back.gen == SeedGen::Sqrt);
+    Number a = Number::from_seed(cfg);
+    Number b = Number::from_seed(back);
+    CHECK(a.digits(11) == b.digits(11));
+}
+
+NAM_TEST(seed_config_padic_roundtrip) {
+    const SeedConfig cfg = SeedConfig::padic(-1, 1, 5);
+    const SeedConfig back = seed_config_from_json_string(to_json_string(cfg));
+    CHECK(back.gen == SeedGen::PAdic);
+    CHECK(back.space.direction == Direction::RL);
+    Number a = Number::from_seed(cfg);
+    Number b = Number::from_seed(back);
+    CHECK(a.digits(10) == b.digits(10));
+}
+
+NAM_TEST(seed_config_in_base_preserves_seed) {
+    // base is a codec: reprojecting a rational seed preserves identity.
+    const SeedConfig c10 = SeedConfig::rational(1, 4, 10);
+    const SeedConfig c2 = c10.in_base(2);
+    CHECK(c2.space.base == 2);
+    Number n2 = Number::from_seed(c2);
+    CHECK(n2.digits(4) == (std::vector<uint32_t>{0, 1, 0, 0}));
+}
+
+NAM_TEST(machine_iterator_in_situ_advances) {
+    // 1/7 = 0.(142857). The in-situ cursor advances in place.
+    MachineIterator it = iterate(SeedConfig::rational(1, 7, 10));
+    const uint32_t expect[] = {1, 4, 2, 8, 5, 7, 1, 4};
+    for (const uint32_t e: expect) {
+        CHECK(*it == e);
+        CHECK(it.next() == e);
+    }
+    CHECK(it.position() == 8);
+}
+
+NAM_TEST(machine_iterator_operator_increment) {
+    MachineIterator it = iterate(SeedConfig::sqrt(2, 10));
+    // sqrt(2) fractional: 4,1,4,2,1,...
+    CHECK(*it == 4);
+    ++it;
+    CHECK(*it == 1);
+    ++it;
+    CHECK(*it == 4);
+    CHECK(it.position() == 2);
+}
+
+NAM_TEST(machine_iterator_fork_is_independent) {
+    MachineIterator it = iterate(SeedConfig::rational(1, 7, 10));
+    it.next(); // consume 1
+    MachineIterator branch = it.fork();
+    // Advance only the original.
+    it.next();
+    it.next();
+    // The fork is untouched: still at digit 4 (position 1).
+    CHECK(branch.position() == 1);
+    CHECK(*branch == 4);
+}
+
+NAM_TEST(machine_iterator_serialize_resume_midstream) {
+    // Advance, checkpoint mid-stream, then resume from JSON and verify the
+    // continuation matches a never-interrupted run byte-identically.
+    MachineIterator live = iterate(SeedConfig::rational(1, 7, 10));
+    for (int i = 0; i < 4; ++i) live.next(); // consume 1,4,2,8
+    const std::string snap = live.to_json_string();
+    MachineIterator resumed = MachineIterator::from_json_string(snap);
+    CHECK(resumed.position() == 4);
+    // Both continue identically.
+    for (int i = 0; i < 8; ++i) {
+        const uint32_t a = live.next();
+        const uint32_t b = resumed.next();
+        CHECK(a == b);
+    }
+}
+
+NAM_TEST(machine_iterator_live_config_spawns_fresh) {
+    // A live iterator can emit a SeedConfig from its CURRENT position so a
+    // fresh machine resumes from there.
+    MachineIterator it = iterate(SeedConfig::rational(1, 7, 10));
+    it.next(); // 1
+    it.next(); // 4
+    const SeedConfig here = it.live_config();
+    Number fresh = Number::from_seed(here);
+    // Continuation of 1/7 after 1,4 is 2,8,5,7...
+    CHECK(fresh.digits(4) == (std::vector<uint32_t>{2, 8, 5, 7}));
+}
+
+NAM_TEST(number_seed_config_roundtrip) {
+    // Number -> SeedConfig -> Number preserves the digit stream exactly.
+    Number n = Number::sqrt(3, 10);
+    const auto cfg = n.seed_config();
+    CHECK(cfg.has_value());
+    Number rebuilt = Number::from_seed(*cfg);
+    CHECK(n.digits(10) == rebuilt.digits(10));
+    // Series tier has no self-contained seed config.
+    CHECK(!Number::e(10).seed_config().has_value());
+}
+
+NAM_TEST(number_json_roundtrip_automaton) {
+    Number n = Number::rational(1, 7, 10);
+    const std::string text = n.to_json_string();
+    Number back = Number::from_json_string(text);
+    CHECK(n.digits(12) == back.digits(12));
+}
+
+NAM_TEST(number_machine_iterates_in_situ) {
+    Number n = Number::rational(1, 7, 10);
+    auto m = n.machine();
+    CHECK(m.has_value());
+    CHECK(m->next() == 1);
+    CHECK(m->next() == 4);
+    CHECK(m->next() == 2);
+    // Original Number unconsumed (value semantics): machine forked the seed.
+    CHECK(n.digits(3) == (std::vector<uint32_t>{1, 4, 2}));
+}
+
+NAM_TEST(series_vm_json_roundtrip_with_spec) {
+    // Series tier serializes accumulators; deserialization rebinds a spec.
+    SeriesVM vm = make_one_over_e(10);
+    for (int i = 0; i < 6; ++i) vm.step_term();
+    const json::Value v = to_json(vm);
+    CHECK(spec_name_in_json(v) == "1/e");
+    SeriesVM back = series_vm_from_json(v, one_over_e_spec());
+    CHECK(back.index == vm.index);
+    CHECK(back.num == vm.num);
+    CHECK(back.den == vm.den);
+    // The resumed VM continues identically.
+    vm.step_term();
+    back.step_term();
+    CHECK(vm.num == back.num);
+    CHECK(vm.den == back.den);
+}
+
+
 NAM_TEST_RUN_ALL()
 
 // NAM_TEST (user_catalan_digits)

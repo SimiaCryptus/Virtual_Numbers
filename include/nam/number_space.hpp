@@ -46,12 +46,12 @@ namespace nam {
 
         // Reproject into a new base, preserving direction/scale. "base is a
         // codec" -- changing it changes the projection, not the number.
-        constexpr NumberSpace in_base(const uint32_t new_base) const {
+        [[nodiscard]] [[nodiscard]] [[nodiscard]] constexpr NumberSpace in_base(const uint32_t new_base) const {
             return NumberSpace{new_base, direction, scale};
         }
 
-        // Shift the radix point by `d` digit positions (scale += d).
-        constexpr NumberSpace shifted(const int32_t d) const {
+        // Shift the radix point by `d` digit posi[[nodiscard]] tions (scale +[[nodiscard]] = d).
+        [[nodiscard]] constexpr NumberSpace shifted(const int32_t d) const {
             return NumberSpace{base, direction, scale + d};
         }
 

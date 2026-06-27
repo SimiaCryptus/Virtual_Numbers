@@ -319,7 +319,7 @@ namespace nam {
         }
 
         // True once any of the working interval operands exceeds the budget.
-        bool operands_too_big() const {
+        [[nodiscard]] bool operands_too_big() const {
             return scale_.bit_width() > max_operand_bits_ ||
                    rlo_.bit_width() > max_operand_bits_ ||
                    rhi_.bit_width() > max_operand_bits_;
@@ -346,7 +346,6 @@ namespace nam {
         // for the still-unresolved fraction.
         BigInt emitted_prefix_; // integer value of fractional digits so far
         BigInt emitted_scale_ = BigInt(1); // base^(#emitted fractional digits)
-        bool prefix_dirty_ = false;
 
         // Re-derive the fractional remainder interval from the operands,
         // honouring the integer part AND the fractional digits already
@@ -428,7 +427,7 @@ namespace nam {
         // rationals (e.g. 1/2 - 1/4). For a terminating value lo and den
         // accumulate trailing factors of `base` in lockstep; stripping them
         // keeps the denominators bounded so the combined divmod stays cheap.
-        void reduce_operand(BigInt &lo, BigInt &hi, BigInt &den) {
+        void reduce_operand(BigInt &lo, BigInt &hi, BigInt &den) const {
             const BigInt B(base_);
             for (;;) {
                 if (den.is_zero()) break;

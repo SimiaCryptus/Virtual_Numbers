@@ -49,14 +49,14 @@ namespace nam {
         };
 
         static Step<State> step(const NumberSpace &ns, const State s) {
-            const int64_t p = static_cast<int64_t>(ns.base);
+            const auto p = static_cast<int64_t>(ns.base);
             const int64_t binv = detail::mod_inverse(s.b, p);
             int64_t d = ((s.a % p) * binv) % p;
             d = ((d % p) + p) % p;
             const int64_t numerator = s.a - d * s.b;
             State next = s;
             next.a = numerator / p; // exact
-            return Step<State>{static_cast<uint32_t>(d), next};
+            return Step{static_cast<uint32_t>(d), next};
         }
     };
 

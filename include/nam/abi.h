@@ -12,7 +12,7 @@
 #ifndef NAM_ABI_H
 #define NAM_ABI_H
 
-#include <stdint.h>
+#include <cstdint>
 
 #ifdef __cplusplus
 extern "C" {

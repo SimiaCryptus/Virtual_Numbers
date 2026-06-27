@@ -66,7 +66,7 @@ namespace nam {
         }
 
         // Width of the interval as hi - lo (over scale). Caller compares.
-        BigInt width() const { return hi - lo; }
+        [[nodiscard]] [[nodiscard]] [[nodiscard]] BigInt width() const { return hi - lo; }
         // Integer value of digits already emitted, as a big integer in `base`.
         BigInt prefix;
     };

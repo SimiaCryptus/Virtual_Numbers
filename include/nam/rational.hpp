@@ -29,13 +29,13 @@ namespace nam {
         static constexpr Step<State> step(const NumberSpace &ns, const State &s) {
             if (s.q == 0) {
                 // Terminating / degenerate denominator: emit zeros.
-                return Step<State>{0u, s};
+                return Step{0u, s};
             }
             const uint64_t scaled = s.r * static_cast<uint64_t>(ns.base);
             const auto digit = static_cast<uint32_t>(scaled / s.q);
             State next = s;
             next.r = scaled % s.q;
-            return Step<State>{digit, next};
+            return Step{digit, next};
         }
     };
 

@@ -41,7 +41,7 @@ namespace nam {
             State next = s;
             next.R = R;
             next.P = P * b + best;
-            return Step<State>{best, next};
+            return Step{best, next};
         }
 
         // Bit-width of the accumulated root prefix register (O(log n)).

@@ -69,7 +69,7 @@ namespace nam {
         // Fork: explicit DEEP COPY of accumulators. The spec is shared
         // (immutable). This is O(size of accumulators) == O(log n) in depth,
         // exactly as documented in THEORY.md. NOT copy-on-write.
-        SeriesVM fork() const {
+        [[nodiscard]] [[nodiscard]] SeriesVM fork() const {
             SeriesVM c;
             c.base = base;
             c.index = index;
@@ -85,12 +85,12 @@ namespace nam {
             ++index;
         }
 
-        // Current tail bound err/den.
-        BigInt tail() const { return spec->tail_bound(index, den); }
+        // Current tail bound err[[nodiscard]] /den.
+        [[nodiscard]] BigInt tail() const { return spec->tail_bound(index, den); }
 
         // Total live accumulator bit-width: the complexity metric for the
-        // series tier (memory IS the metric, THEORY.md).
-        int accumulator_bitwidth() const {
+        // series tier (memory IS the [[nodiscard]] metric, THEORY.md).
+        [[nodiscard]] int accumulator_bitwidth() const {
             return num.bit_width() + den.bit_width();
         }
 

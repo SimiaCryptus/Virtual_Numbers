@@ -36,6 +36,7 @@
 #include "constants.hpp"
 #include "memo.hpp"
 #include "arith.hpp"
+#include "serialize.hpp"
 
 namespace nam {
     // ---- Precision context (THEORY.md "precision_context(digits=N)") ----
@@ -146,6 +147,121 @@ namespace nam {
             return n;
         }
 
+        // ----- Seed configs + in-situ iterating machines -----
+        // Build a Number from a serializable SeedConfig (automaton tier).
+        static Number from_seed(const SeedConfig &cfg) {
+            Number n;
+            n.tier_ = Tier::Automaton;
+            n.space_ = cfg.space;
+            switch (cfg.gen) {
+                case SeedGen::Rational:
+                    n.gen_ = Gen::Rational;
+                    n.state_ = std::get<Rational::State>(cfg.seed);
+                    break;
+                case SeedGen::Sqrt:
+                    n.gen_ = Gen::Sqrt;
+                    n.state_ = std::get<Sqrt::State>(cfg.seed);
+                    break;
+                case SeedGen::PAdic:
+                    n.gen_ = Gen::PAdic;
+                    n.state_ = std::get<PAdic::State>(cfg.seed);
+                    break;
+            }
+            return n;
+        }
+
+        // Re-derive the canonical SeedConfig recipe from this Number's LIVE
+        // automaton state. Only meaningful for the automaton tier; returns
+        // nullopt for series/arith (their seed is a compiled spec / stream).
+        [[nodiscard]] std::optional<SeedConfig> seed_config() const {
+            if (tier_ != Tier::Automaton) return std::nullopt;
+            SeedConfig c;
+            c.space = space_;
+            switch (gen_) {
+                case Gen::Rational:
+                    c.gen = SeedGen::Rational;
+                    c.seed = std::get<Rational::State>(state_);
+                    break;
+                case Gen::Sqrt:
+                    c.gen = SeedGen::Sqrt;
+                    c.seed = std::get<Sqrt::State>(state_);
+                    break;
+                case Gen::PAdic:
+                    c.gen = SeedGen::PAdic;
+                    c.seed = std::get<PAdic::State>(state_);
+                    break;
+            }
+            return c;
+        }
+
+        // Spawn an in-situ iterating machine over this Number's live state.
+        // The cursor advances in place and serializes mid-stream. Automaton
+        // tier only; returns nullopt otherwise.
+        [[nodiscard]] std::optional<MachineIterator> machine() const {
+            const auto cfg = seed_config();
+            if (!cfg.has_value()) return std::nullopt;
+            return MachineIterator(*cfg);
+        }
+
+        // ----- JSON serialization -----
+        // Lossless for the automaton tier (full register file + cursor). For
+        // the series tier the mutable accumulators + index + spec_name are
+        // emitted; deserialization requires rebinding a spec (see from_json).
+        [[nodiscard]] json::Value to_json_value() const {
+            json::Object o;
+            switch (tier_) {
+                case Tier::Automaton: {
+                    o["tier"] = json::Value("automaton");
+                    o["seed"] = nam::to_json(*seed_config());
+                    o["emitted"] = json::Value(
+                        static_cast<int64_t>(emitted_));
+                    break;
+                }
+                case Tier::Series: {
+                    o["tier"] = json::Value("series");
+                    o["series"] = nam::to_json(series_);
+                    break;
+                }
+                case Tier::Arith: {
+                    // Arith streams are stateful drivers over forked operands;
+                    // we record the op + base only (operands are not directly
+                    // recoverable). A round-trip of an arith Number is not
+                    // lossless -- documented honestly here.
+                    o["tier"] = json::Value("arith");
+                    o["base"] = json::Value(
+                        static_cast<int64_t>(arith_base_));
+                    break;
+                }
+            }
+            return json::Value(std::move(o));
+        }
+
+        [[nodiscard]] std::string to_json_string() const {
+            return json::dump(to_json_value());
+        }
+
+        // Reconstruct an automaton-tier Number from JSON (lossless). Series
+        // and arith tiers require external spec/operand context and are not
+        // reconstructed here (throws for non-automaton payloads).
+        static Number from_json(const json::Value &v) {
+            const std::string tier = v.at("tier").as_str();
+            if (tier == "automaton") {
+                Number n = from_seed(seed_config_from_json(v.at("seed")));
+                if (v.has("emitted"))
+                    n.emitted_ = static_cast<uint64_t>(
+                        v.at("emitted").as_int());
+                return n;
+            }
+            throw std::runtime_error(
+                "Number::from_json: only the automaton tier is "
+                "self-contained; series/arith need external context");
+        }
+
+        static Number from_json_string(const std::string &s) {
+            return from_json(json::parse(s));
+        }
+
+
         // ----- Arithmetic combiners (+ - * /) -----
         // Interval-honest binary arithmetic over the FRACTIONAL parts of two
         // numbers (values assumed in [0,1) for digit streaming). The result is
@@ -193,9 +309,9 @@ namespace nam {
 
 
         // ----- Introspection -----
-        Tier tier() const { return tier_; }
+        [[nodiscard]] Tier tier() const { return tier_; }
 
-        uint32_t base() const {
+        [[nodiscard]] uint32_t base() const {
             switch (tier_) {
                 case Tier::Automaton: return space_.base;
                 case Tier::Series: return series_.base;
@@ -204,15 +320,15 @@ namespace nam {
             return 10;
         }
 
-        // Series-tier complexity probe: live accumulator bit-width (memory IS
+        // Series-tier complexity probe: live accumulator bit-width (memory IS[[nodiscard]]
         // the metric). Returns 0 for the automaton tier (constant state).
-        int accumulator_bitwidth() const {
+        [[nodiscard]] int accumulator_bitwidth() const {
             if (tier_ == Tier::Series) return series_.accumulator_bitwidth();
             return 0;
         }
 
         // Generator-family tag for the automaton tier (informational).
-        Gen gen() const { return gen_; }
+        [[nodiscard]] Gen gen() const { return gen_; }
 
 
         // ----- Codec: base as projection (THEORY.md "in_base(b)") -----
@@ -220,7 +336,7 @@ namespace nam {
         // re-seeded by re-decoding through a streaming reprojection in the
         // digit layer. For Phase 3 we expose the exact rational reprojection
         // and a codec swap for series (which carries base in the VM).
-        Number in_base(const uint32_t new_base) const {
+        [[nodiscard]] Number in_base(const uint32_t new_base) const {
             Number n = *this;
             if (tier_ == Tier::Automaton) {
                 // Base is a codec: reprojecting is rebinding the space's base.
@@ -233,14 +349,14 @@ namespace nam {
         }
 
         // ----- Memoization policy (explicit, never hidden) -----
-        Number streaming() const {
+        [[nodiscard]] Number streaming() const {
             Number n = *this;
             n.memo_ = Memo::Streaming;
             n.cache_.reset();
             return n;
         }
 
-        Number cached(size_t max_digits) const {
+        [[nodiscard]] Number cached(size_t max_digits) const {
             Number n = *this;
             n.memo_ = Memo::Cached;
             n.cache_ = std::make_shared<LruDigitCache>(max_digits);
@@ -250,7 +366,7 @@ namespace nam {
 
         // ----- Fork (honest cost annotation) -----
         // Automaton tier: O(1) struct copy. Series tier: O(log n) deep copy.
-        std::pair<Number, Number> fork() const {
+        [[nodiscard]] std::pair<Number, Number> fork() const {
             Number a = *this;
             Number b;
             b.tier_ = tier_;
@@ -282,14 +398,14 @@ namespace nam {
         }
 
         // Fork cost annotation for the curious user.
-        const char *fork_cost() const {
+        [[nodiscard]] const char *fork_cost() const {
             if (tier_ == Tier::Automaton) return "O(1)";
             if (tier_ == Tier::Series) return "O(log n)";
             return "O(log n) [arith]"; // bounded by operand interval growth
         }
 
         // ----- Skip-ahead (only meaningful for periodic automata) -----
-        std::optional<Number> skip(const uint64_t n) const {
+        [[nodiscard]] std::optional<Number> skip(const uint64_t n) const {
             if (tier_ != Tier::Automaton) return std::nullopt;
             if (gen_ != Gen::Rational) return std::nullopt; // Phase 1 path
             Number r = *this;
@@ -370,21 +486,21 @@ namespace nam {
         // agrees_with: EXACT for a finite prefix of `digits` digits.
         // Only valid for like-tier, like-generator, same-base numbers; the
         // automaton path uses the typed comparator, the series path streams.
-        bool agrees_with(const Number &other, const int digits) const {
+        [[nodiscard]] bool agrees_with(const Number &other, const int digits) const {
             Number a = *this, b = other;
             for (int i = 0; i < digits; ++i) {
                 auto da = a.next_digit();
-                auto db = b.next_digit();
+                [[nodiscard]] auto db = b.next_digit();
                 if (!da.has_value() || !db.has_value()) return false;
                 if (*da != *db) return false;
             }
             return true;
         }
 
-        // definitely_less_than: true / false / pending (nullopt).
+        // defini[[nodiscard]] tely_less_than: true / false / pending (nullopt).
         // Valid for MSB-first positional streams (rationals/reals), NOT for
         // LSB-up p-adics -- mirrors compare.hpp's documented restriction.
-        std::optional<bool> definitely_less_than(const Number &other,
+        [[nodiscard]] std::optional<bool> definitely_less_than(const Number &other,
                                                  const int max_digits) const {
             Number a = *this, b = other;
             for (int i = 0; i < max_digits; ++i) {
@@ -397,7 +513,7 @@ namespace nam {
             return std::nullopt; // indistinguishable within bound
         }
 
-        Trit compare(const Number &other, const int max_digits) const {
+        [[nodiscard]] Trit compare(const Number &other, const int max_digits) const {
             const auto r = definitely_less_than(other, max_digits);
             if (!r.has_value()) return Trit::Indistinguishable;
             return *r ? Trit::Less : Trit::Greater;
