@@ -56,7 +56,7 @@ namespace nam {
             // then subtract the integer prefix already emitted. This re-derives
             // the remaining fraction exactly from the VM (interval-honest),
             // avoiding the broken incremental rescale.
-            BigInt shift = big_pow(BigInt(static_cast<int64_t>(base)),
+            BigInt shift = big_pow(BigInt(base),
                                    static_cast<uint64_t>(consumed));
             BigInt full_lo = vm.num * shift;
             BigInt full_hi = (vm.num + err) * shift;
@@ -93,7 +93,7 @@ namespace nam {
     // floor(base * lo / scale) == floor(base * (hi) / scale) where hi is the
     // (exclusive-ish) upper bound. We refine the series until that holds.
     inline std::optional<uint32_t> next_digit(DigitExtractor &ex) {
-        BigInt B = BigInt(static_cast<int64_t>(ex.base));
+        BigInt B = BigInt(ex.base);
         for (int iter = 0; iter < ex.max_refine_iters; ++iter) {
             // Always work from a freshly-synced interval so the bounds are
             // exact for the current series depth (no incremental rescale).

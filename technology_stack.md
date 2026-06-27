@@ -44,58 +44,6 @@ boundary types in plain C; use C++ only above the ABI line.
 
 ---
 
-## LLVM
-
-### 1. The IR data model (read-only at first)
-
-LLVM IR is an SSA-form, typed intermediate representation. For this project the
-relevant fact is that your ABI structs map directly to IR aggregate types:
-
-```llvm
-%AutomatonVM = type { i32, i32, [4 x i64] }
-%NumVMStep   = type { i32, %AutomatonVM }
-```
-
-Start by reading `llvm/IR/IRBuilder.h`. `IRBuilder` is how you *emit* IR
-programmatically — it is the single most important class for Phase 4 (JIT).
-
-### 2. Static path (Phases 1–3): let Clang do it
-
-For statically-known generator trees, you write ordinary C++ and let **Clang**
-optimize. The README's claim — *"LLVM inlines across the whole graph"* —
-is realized simply by:
-
-- marking step functions `inline` / `static`,
-- building with `-O2`/`-O3`,
-- keeping the automaton-tier fork as a trivial struct copy (the compiler sees through it).
-
-No hand-written IR is required for this path. This is the bulk of the early work.
-
-### 3. Dynamic path (Phase 4): ORC v2 JIT
-
-For *runtime-constructed* expression trees (parsed formulas, dynamic matrices),
-static optimization cannot eliminate function-pointer dispatch. Here you use the
-**ORC v2** JIT (`llvm/ExecutionEngine/Orc`). The flow is:
-
-1. Walk the runtime expression tree.
-2. Emit one specialized `NumVMFn` via `IRBuilder`.
-3. Hand the module to `LLJIT`.
-4. Get back a function pointer with the same C ABI as the static path.
-
-This is the `compile(expr_tree) → NumVMFn` primitive from the README.
-
-**Learning resources, in order:**
-
-1. *Kaleidoscope tutorial* (official LLVM docs) — builds a JIT front-to-back. Do chapters 1–7.
-2. `LLJIT` / `LLJITBuilder` headers and the `BuildingAJIT` tutorial (ORC v2).
-3. *LLVM Language Reference* — keep open as a reference, do not read end-to-end.
-
-**Version pin:** target **LLVM 17 or 18**. ORC v2 is stable there, opaque
-pointers are the default (you won't fight pointer-element-type APIs), and the
-CMake config exports are clean.
-
----
-
 ## Arbitrary-Precision Integers
 
 The **series tier** needs growing accumulators (`ArbitraryInt`):

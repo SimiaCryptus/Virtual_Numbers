@@ -95,9 +95,7 @@ int main() {
 ```sh
 # Dependencies (Debian/Ubuntu). Only build tooling is required for the core;
 # the zstd/zlib/edit/curl packages are for the optional LLVM JIT backend.
-sudo apt update && sudo apt install -y \
- build-essential ninja-build cmake \
-  libzstd-dev zlib1g-dev libedit-dev libcurl4-openssl-dev llvm-dev llvm
+sudo apt update && sudo apt install -y build-essential ninja-build cmake libzstd-dev zlib1g-dev libedit-dev libcurl4-openssl-dev
 
 rm -rf build && cmake -S . -B build -G Ninja && cmake --build build
 ctest --test-dir build --output-on-failure
@@ -110,9 +108,7 @@ upgrades are gated behind CMake flags:
 
 | Flag                      | Effect                                           | Default |
  |---------------------------|--------------------------------------------------|---------|
-| `-DNAM_USE_LLVM_APINT=ON` | Use `llvm::APInt` for bounded integers           | off     |
 | `-DNAM_USE_GMP=ON`        | Use GMP `mpz_t` for the series tier accumulators | off     |
-| `-DNAM_USE_LLVM_JIT=ON`   | Real LLVM ORC v2 JIT backend (vs interpreter)    | off     |
 | `-DNAM_BUILD_PYTHON=ON`   | Build the pybind11 user-layer bindings           | off     |
 | `-DNAM_BUILD_WASM=ON`     | Build the Emscripten/embind WebAssembly bindings | off     |
 | `-DNAM_SANITIZE=ON`       | ASan + UBSan on the test target                  | **on**  |
@@ -160,36 +156,6 @@ memoization modes.
 See [JIT compilation path](#jit-compilation-path-phase-4).
 
  ---
-
-## JIT compilation path (Phase 4)
-
-Runtime-constructed expression trees (`nam::Expr`) are compiled to a single
-specialized `NumVMFn` via `nam::compile(expr_tree)` (THEORY.md "LLVM as the
-Execution Substrate"). The returned `CompiledFn::fn()` has the *exact* same
-C ABI as the static path — `NumVMStep (*)(AutomatonVM)` — so every existing
-combinator (compare, metric, skip, codec) consumes it unchanged.
-
-By default the JIT is **off** and `compile()` binds a function-pointer
-*interpreter* trampoline honoring the same ABI, so the core builds with zero
-external dependencies. Enable the real LLVM ORC v2 backend (emits IR via
-`IRBuilder`, materializes through `LLJIT`) with:
-
-```sh
-cmake -S . -B build -G Ninja -DNAM_USE_LLVM_JIT=ON
-cmake --build build && ctest --test-dir build --output-on-failure
-```
-
-`CompiledFn::is_native()` reports whether a real JIT (vs the interpreter)
-produced the function. Both paths reproduce the static digit stream exactly.
-
-Example:
-
-```cpp
-auto e = Expr::rebase(Expr::leaf_rational(1, 4, 10), 2); // 1/4 in base 2
-CompiledFn cf = compile(*e);
-AutomatonVM s = resolve_expr(*e).seed;
-NumVMStep r = cf.step(s);   // r.digit == 0, then 1, 0, 0 ...
-```
 
 ---
 
@@ -336,7 +302,6 @@ gdb ./build-debug/tests/nam_tests
 | P2 Refine         | `nam/refine.hpp`                      | interval-honest online digit extraction          |
 | P2 Memo           | `nam/memo.hpp`                        | explicit bounded LRU, no hidden global state     |
 | P3 User API       | `nam/number.hpp`                      | `Number` type, precision contexts, fork cost     |
-| P4 JIT / Expr     | `nam/expr.hpp`, `nam/jit.hpp`         | `compile(expr) -> NumVMFn`, interp + LLVM paths  |
 | P3 WASM           | `bindings/wasm/*`                     | Emscripten/embind JS bindings, same user surface |
 
  ---

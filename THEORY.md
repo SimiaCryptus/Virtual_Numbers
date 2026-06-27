@@ -273,59 +273,6 @@ The "forking is a struct copy" claim applies to the automaton tier, fully and wi
 tier, fork is `O(log n)` in the computation depth and is documented as such. This is not a defect — it is the actual
 cost of the operation, and hiding it would break the value-semantics contract that makes the abstraction safe.
 
----
-
-## LLVM as the Execution Substrate
-
-The nano-VM is not a bytecode interpreter. It does not encode or decode its own state. That is precisely why LLVM is the
-right implementation target.
-
-The canonical ABI for the automaton tier is:
-
-```c
-struct NumVMStep {
-    uint32_t digit;
-    AutomatonVM next;
-};
-
-typedef struct NumVMStep (*NumVMFn)(AutomatonVM);
-```
-
-In LLVM IR:
-
-```llvm
-%AutomatonVM = type { i32, i32, [4 x i64] }
-%NumVMStep   = type { i32, %AutomatonVM }
-
-define %NumVMStep @num_step(%AutomatonVM %s) { ... }
-```
-
-**State is native machine data, not a serialized blob.** LLVM handles state layout, register allocation, calling
-conventions, inlining, constant folding, JIT specialization, dead code elimination, loop unrolling, and tail recursion
-elimination. The program does not encode or decode anything — it simply operates on struct fields.
-
-Forking the automaton tier is a struct copy:
-
-```c
-static inline AutomatonVM num_vm_fork(AutomatonVM s) {
-    return s; // pure value copy — no hidden state
-}
-```
-
-Composition is function wrapping: an addition VM holds two sub-VM states plus a carry field, calls both sub-VM step
-functions, combines the digits, and returns a new composite state. LLVM inlines the entire generator graph, optimizes
-across VM boundaries, fuses arithmetic, eliminates intermediate states, and specializes for constants.
-
-**A caveat about LLVM's reach.** LLVM optimization applies fully to _statically-known, compile-time-fixed_ expression
-trees. For _runtime-constructed_ expression trees — parsing arithmetic expressions, dynamic matrix construction,
-user-input formulas — function-pointer dispatch will not be eliminated by static optimization alone. For these cases,
-the library provides a **JIT compilation path**: an expression tree is compiled to a single specialized LLVM function
-via `compile(expr_tree) → NumVMFn`, which then receives the same inlining, constant folding, and specialization
-treatment as a statically-built tree. This split is explicit in the API, not hidden behind a single uniform interface
-that would silently degrade for dynamic cases.
-
-The base parameter — the codec — lives in `payload` or `flags`. It is not baked into the number. Changing base is
-changing the projection, not the number. The ABI does not change when you swap codecs.
 
 ---
 

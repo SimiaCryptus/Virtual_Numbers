@@ -64,14 +64,6 @@ mpmath/Decimal-flavoured surface:
 - **Interval-honest comparison** (`compare.hpp`) — `definitely_less_than`
   returns *true / false / pending*, never a false definite answer.
 
-### 4. The JIT path — runtime expression trees
-
-For runtime-constructed expressions (`expr.hpp`), `compile(expr_tree) ->
-NumVMFn` (`jit.hpp`) specializes a tree into a single C-callable step
-function. It uses LLVM ORC v2 when available, and falls back to a
-function-pointer interpreter with the *same C ABI* otherwise — so the whole
-library builds with **zero external dependencies** by default.
-
 ---
 
 ## What it solves
@@ -115,7 +107,7 @@ emission time, so the same value reprojects cleanly into any base.
 | Hidden state                      | —                   | —                                   | Global precision       | Global context          | —                                        | **None (scoped, explicit)**                   |
 | Base handling                     | Binary only         | Binary internal                     | Binary internal        | Decimal only            | Binary internal                          | **Base = codec, any base**                    |
 | Runtime expression specialization | —                   | —                                   | —                      | —                       | —                                        | **JIT to one NumVMFn**                        |
-| External deps                     | None                | libgmp / mpfr                       | Python+SymPy           | Python stdlib           | Heavy runtime                            | **Zero by default; LLVM/GMP optional**        |
+| External deps                     | None                | libgmp / mpfr                       | Python+SymPy           | Python stdlib           | Heavy runtime                            | **Zero by default; GMP optional**        |
 
 **Versus GMP/MPFR.** Those give you fast fixed-precision big arithmetic, but
 you still pick precision up front and pay full deep-copy on every branch.
@@ -153,5 +145,5 @@ a much larger family of *number machines*.
    is opt-in and per-value.
 4. **The ABI is frozen and versioned.** `AutomatonVM` is `40` bytes,
    trivially copyable, standard-layout — verified by `static_assert`.
-5. **Zero required dependencies.** LLVM (APInt/JIT) and GMP are optional
+5. **Zero required dependencies.** GMP are optional
    drop-in upgrades behind CMake flags.

@@ -42,7 +42,7 @@ namespace nam {
                                          int max_digits) {
         auto v = padic_valuation_of_difference<G>(x, y, max_digits);
         if (!v.has_value()) return std::nullopt;
-        double p = static_cast<double>(x.base);
+        double p = x.base;
         return std::pow(p, -static_cast<double>(*v));
     }
 } // namespace nam

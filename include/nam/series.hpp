@@ -105,7 +105,7 @@ namespace nam {
             uint64_t stepped = 0;
             // Required: err/den < base^{-target_digits}, i.e.
             // err * base^target_digits < den.
-            BigInt threshold = big_pow(BigInt(static_cast<int64_t>(base)),
+            BigInt threshold = big_pow(BigInt(base),
                                        static_cast<uint64_t>(target_digits));
             for (int i = 0; i < max_steps; ++i) {
                 if (index > 0) {

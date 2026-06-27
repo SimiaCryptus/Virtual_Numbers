@@ -134,9 +134,9 @@ namespace nam {
             if (!d.has_value()) return false;
             if (*d == 0) ++x_zero_run_;
             else x_zero_run_ = 0;
-            BigInt B(static_cast<int64_t>(base_));
+            BigInt B(base_);
             // new lo = lo*base + d ; den *= base ; hi = lo + 1.
-            xlo_ = xlo_ * B + BigInt(static_cast<int64_t>(*d));
+            xlo_ = xlo_ * B + BigInt(*d);
             xden_ = xden_ * B;
             xhi_ = xlo_ + BigInt(1);
             reduce_operand(xlo_, xhi_, xden_);
@@ -149,8 +149,8 @@ namespace nam {
             if (!d.has_value()) return false;
             if (*d == 0) ++y_zero_run_;
             else y_zero_run_ = 0;
-            BigInt B(static_cast<int64_t>(base_));
-            ylo_ = ylo_ * B + BigInt(static_cast<int64_t>(*d));
+            BigInt B(base_);
+            ylo_ = ylo_ * B + BigInt(*d);
             yden_ = yden_ * B;
             yhi_ = ylo_ + BigInt(1);
             reduce_operand(ylo_, yhi_, yden_);
@@ -260,7 +260,7 @@ namespace nam {
 
         // Emit one fractional digit if committable; refine otherwise.
         std::optional<uint32_t> next_fraction_digit() {
-            BigInt B(static_cast<int64_t>(base_));
+            BigInt B(base_);
             for (int iter = 0; iter < max_refine_iters_; ++iter) {
                 ++fraction_iter_count_;
                 // Keep the fractional interval reduced: divide out any
@@ -372,7 +372,7 @@ namespace nam {
         // This bounds the size of the operands handed to BigInt division so
         // the refine loop cannot blow up into a freeze.
         void reduce_fraction() {
-            BigInt B(static_cast<int64_t>(base_));
+            BigInt B(base_);
             for (;;) {
                 if (scale_.is_zero()) break;
                 BigInt r1, r2, r3;
@@ -431,7 +431,7 @@ namespace nam {
         // accumulate trailing factors of `base` in lockstep; stripping them
         // keeps the denominators bounded so the combined divmod stays cheap.
         void reduce_operand(BigInt &lo, BigInt &hi, BigInt &den) {
-            BigInt B(static_cast<int64_t>(base_));
+            BigInt B(base_);
             for (;;) {
                 if (den.is_zero()) break;
                 BigInt r1, r2, r3;

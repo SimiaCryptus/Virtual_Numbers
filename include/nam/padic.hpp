@@ -56,7 +56,7 @@ namespace nam {
         static NumVMStep step(AutomatonVM s) {
             int64_t a = static_cast<int64_t>(s.state[0]);
             int64_t b = static_cast<int64_t>(s.state[1]);
-            int64_t p = static_cast<int64_t>(s.base);
+            int64_t p = s.base;
 
             int64_t binv = detail::mod_inverse(b, p);
             int64_t d = ((a % p) * binv) % p;
