@@ -87,11 +87,12 @@ used here are standard textbook results:
 
 ## Provided Constants
 
-| Builder             | Value      | Series              |
-|---------------------|------------|---------------------|
-| `e_spec()`          | `2.71828…` | `Σ_{k≥0} 1/k!`      |
-| `ln2_spec()`        | `0.69314…` | `Σ_{k≥1} 1/(k·2^k)` |
-| `one_over_e_spec()` | `0.36787…` | `Σ_{k≥0} (−1)^k/k!` |
+| Builder             | Value      | Series                    |
+|---------------------|------------|---------------------------|
+| `e_spec()`          | `2.71828…` | `Σ_{k≥0} 1/k!`            |
+| `ln2_spec()`        | `0.69314…` | `Σ_{k≥1} 1/(k·2^k)`       |
+| `one_over_e_spec()` | `0.36787…` | `Σ_{k≥0} (−1)^k/k!`       |
+| `pi_quarter_spec()` | `0.78539…` | `arctan(1/2)+arctan(1/3)` |
 
 Convenience wrappers materialise a `SeriesVM` in a chosen radix:
 
@@ -99,6 +100,7 @@ Convenience wrappers materialise a `SeriesVM` in a chosen radix:
 nam::SeriesVM e   = nam::make_e();        // base 10 by default
 nam::SeriesVM l2  = nam::make_ln2(2);     // binary digits of ln 2
 nam::SeriesVM ie  = nam::make_one_over_e();
+nam::SeriesVM piq = nam::make_pi_quarter(); // 0.78539... = pi/4
 ```
 
 > **Note.** `e` itself has integer part `2`; the fractional-part extractor

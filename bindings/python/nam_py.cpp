@@ -136,7 +136,9 @@ PYBIND11_MODULE(nam, m)
         .def_static("ln2", &Number::ln2, py::arg("base") = 10,
                     "Series-tier ln 2.")
         .def_static("one_over_e", &Number::one_over_e, py::arg("base") = 10,
-                    "Series-tier 1/e.");
+                    "Series-tier 1/e.")
+        .def_static("pi_quarter", &Number::pi_quarter, py::arg("base") = 10,
+                    "Series-tier pi/4 (fractional value 0.7853...).");
 
     // ----- Introspection -----
     number
@@ -226,4 +228,5 @@ PYBIND11_MODULE(nam, m)
     m.def("e", &Number::e, py::arg("base") = 10);
     m.def("ln2", &Number::ln2, py::arg("base") = 10);
     m.def("one_over_e", &Number::one_over_e, py::arg("base") = 10);
+    m.def("pi_quarter", &Number::pi_quarter, py::arg("base") = 10);
 }

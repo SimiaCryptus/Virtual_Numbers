@@ -136,6 +136,14 @@ namespace nam
     // stream is also non-local. For simplicity and correctness Phase 1 ships
     // make_sqrt and computes phi-related quantities in tests via sqrt(5).
     inline AutomatonVM make_sqrt5(uint32_t base) { return make_sqrt(5, base); }
+    // General integer-multiple-of-sqrt: emit the fractional digits of
+    // sqrt(c^2 * D) = c*sqrt(D) by seeding the long-hand recurrence with the
+    // scaled radicand. This lets callers express, e.g., 2*sqrt(2) = sqrt(8)
+    // without a separate codec-level multiply.
+    inline AutomatonVM make_scaled_sqrt(uint64_t c, uint64_t D, uint32_t base)
+    {
+        return make_sqrt(c * c * D, base);
+    }
 } // namespace nam
 
 #endif // NAM_ALGEBRAIC_HPP

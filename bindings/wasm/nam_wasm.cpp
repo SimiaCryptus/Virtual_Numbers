@@ -192,4 +192,5 @@ EMSCRIPTEN_BINDINGS(nam_module)
     function("e", &Number::e);
     function("ln2", &Number::ln2);
     function("one_over_e", &Number::one_over_e);
+    function("pi_quarter", &Number::pi_quarter);
 }

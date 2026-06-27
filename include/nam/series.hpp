@@ -101,6 +101,31 @@ namespace nam
         {
             return num.bit_width() + den.bit_width();
         }
+
+        // Advance until the certified interval width err/den is narrow enough
+        // that at least `target_digits` base-`base` digits are pinned, or the
+        // step budget is exhausted. Returns the number of terms stepped. This
+        // is a convenience the refiner can call to batch-converge instead of
+        // stepping one term per digit attempt.
+        uint64_t converge_to_digits(int target_digits, int max_steps = 100000)
+        {
+            uint64_t stepped = 0;
+            // Required: err/den < base^{-target_digits}, i.e.
+            // err * base^target_digits < den.
+            BigInt threshold = big_pow(BigInt(static_cast<int64_t>(base)),
+                                       static_cast<uint64_t>(target_digits));
+            for (int i = 0; i < max_steps; ++i)
+            {
+                if (index > 0)
+                {
+                    BigInt err = tail();
+                    if (err * threshold < den) break;
+                }
+                step_term();
+                ++stepped;
+            }
+            return stepped;
+        }
     };
 
     // ---- Construct a SeriesVM from a spec ----

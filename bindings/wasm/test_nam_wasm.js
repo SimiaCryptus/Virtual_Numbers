@@ -63,6 +63,11 @@ function eq(a, b) {
             check(nam.rational(1, 4, 10).to_string(4) === '0.2500',
                 'render 1/4');
         },
+        test_pi_quarter() {
+            const n = nam.pi_quarter(10);
+            check(eq(n.digits(6), [7, 8, 5, 3, 9, 8]), 'pi/4 digits');
+            check(n.fork_cost() === 'O(log n)', 'pi/4 series fork cost');
+        },
     };
 
     let failures = 0;

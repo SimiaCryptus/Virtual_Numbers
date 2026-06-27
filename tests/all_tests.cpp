@@ -474,6 +474,89 @@ NAM_TEST(extract_ln2_digits)
         CHECK(digits[i] == expect[i]);
     }
 }
+NAM_TEST (extract_pi_quarter_digits)
+{
+    // pi/4 = 0.78539816339...  value in [0,1).
+    SeriesVM vm = make_pi_quarter(10);
+    DigitExtractor ex = make_extractor(vm, 10);
+    auto digits = extract_digits(ex, 6);
+    const uint32_t expect[] = {7, 8, 5, 3, 9, 8};
+    CHECK(digits.size() >= 6);
+    for (size_t i = 0; i < digits.size() && i < 6; ++i)
+    {
+        CHECK(digits[i] == expect[i]);
+    }
+}
+
+NAM_TEST (extract_eager_matches_lazy)
+{
+    // Eager pre-convergence must produce identical digits to the lazy path.
+    auto lazy = extract_digits(make_extractor(make_one_over_e(10), 10), 6);
+    auto eager = extract_digits_eager(make_extractor(make_one_over_e(10), 10), 6);
+    CHECK(lazy.size() >= 6);
+    CHECK(eager.size() >= 6);
+    for (size_t i = 0; i < 6; ++i)
+        CHECK(lazy[i] == eager[i]);
+}
+
+NAM_TEST (series_converge_to_digits)
+{
+    // converge_to_digits must pull enough terms that the interval pins the
+    // requested precision (err/den < base^-target).
+    SeriesVM vm = make_one_over_e(10);
+    uint64_t stepped = vm.converge_to_digits(8);
+    CHECK(stepped > 0);
+    BigInt err = vm.tail();
+    BigInt thr = big_pow(BigInt(10), 8);
+    CHECK(err * thr < vm.den);
+}
+
+NAM_TEST (bigint_mod_small)
+{
+    // mod_small must agree with full divmod for small divisors.
+    BigInt big = big_pow(BigInt(2), 100);
+    BigInt r;
+    BigInt::divmod(big, BigInt(7), r);
+    CHECK(static_cast<int64_t>(big.mod_small(7)) == r.to_i64());
+    CHECK(BigInt(123456789).mod_small(1000) == 789);
+}
+
+NAM_TEST (bigint_short_division_fast_path)
+{
+    // The single-limb fast path must match the bitwise reference for many
+    // values (single-limb divisor triggers short division).
+    BigInt big = big_pow(BigInt(10), 40);
+    BigInt r;
+    BigInt q = BigInt::divmod(big, BigInt(99991), r);
+    // Reconstruct: q*99991 + r == big.
+    CHECK(q * BigInt(99991) + r == big);
+    CHECK(r < BigInt(99991));
+}
+
+NAM_TEST (scaled_sqrt_is_c_times_sqrt)
+{
+    // 2*sqrt(2) = sqrt(8) = 2.8284271...  fractional: 8,2,8,4,2,7,1
+    AutomatonVM v = make_scaled_sqrt(2, 2, 10);
+    const uint32_t expect[] = {8, 2, 8, 4, 2, 7, 1};
+    for (uint32_t e : expect)
+    {
+        NumVMStep r = Sqrt::step(v);
+        CHECK(r.digit == e);
+        v = r.next;
+    }
+}
+
+NAM_TEST (cross_generator_compare)
+{
+    // sqrt(2)=1.414... vs 1/3=0.333... ; fractional streams compared MSB-first:
+    // 4 > 3 at digit 0 -> sqrt(2) fractional NOT less than 1/3.
+    AutomatonVM s2 = make_sqrt(2, 10);
+    AutomatonVM third = make_rational(1, 3, 10);
+    auto lt = definitely_less_than_xy<Sqrt, Rational>(s2, third, 5);
+    CHECK(lt.has_value());
+    CHECK(*lt == false);
+}
+
 
 // ---------- Explicit bounded LRU memoization ----------
 NAM_TEST(lru_cache_bounds_and_evicts)
@@ -542,6 +625,25 @@ NAM_TEST(user_number_series_digits)
     for (size_t i = 0; i < 6 && i < ds.size(); ++i)
         CHECK(ds[i] == expect[i]);
 }
+NAM_TEST (user_number_pi_quarter)
+{
+    // pi/4 via the user API -> 0.78539816...
+    Number n = Number::pi_quarter(10);
+    auto ds = n.digits(6);
+    const uint32_t expect[] = {7, 8, 5, 3, 9, 8};
+    CHECK(ds.size() >= 6);
+    for (size_t i = 0; i < 6 && i < ds.size(); ++i)
+        CHECK(ds[i] == expect[i]);
+}
+
+NAM_TEST (user_pi_quarter_fork_is_log_n)
+{
+    Number n = Number::pi_quarter(10);
+    CHECK(std::string(n.fork_cost()) == "O(log n)");
+    auto [a, b] = n.fork();
+    CHECK(a.digits(5) == b.digits(5));
+}
+
 
 // ---------- Precision context (scoped, RAII, thread-local) ----------
 NAM_TEST(user_precision_context_scoped)

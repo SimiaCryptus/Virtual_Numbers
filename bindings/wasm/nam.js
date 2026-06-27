@@ -96,6 +96,7 @@ export default async function loadNam(moduleFactory) {
         e: (base = 10) => wrap(M.e(base)),
         ln2: (base = 10) => wrap(M.ln2(base)),
         one_over_e: (base = 10) => wrap(M.one_over_e(base)),
+        pi_quarter: (base = 10) => wrap(M.pi_quarter(base)),
 
         // Scoped precision context as a callback-style `with`. Restores the
         // prior precision even if `fn` throws (RAII semantics preserved).

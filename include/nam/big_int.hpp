@@ -206,6 +206,24 @@ namespace nam
             return negative_ ? -s : s;
         }
 
+        // Parity / small-modulus helpers used by digit extraction without a
+        // full divmod. Returns the value modulo a small positive divisor.
+        uint64_t mod_small(uint64_t d) const
+        {
+            uint64_t rem = 0;
+            for (size_t i = mag_.size(); i-- > 0;)
+            {
+                // rem = (rem * 2^32 + limb) % d, computed in two 16-bit-safe
+                // steps to avoid 64-bit overflow when d is up to 2^32.
+                rem = ((rem << 16) % d);
+                rem = ((rem << 16) | (mag_[i] >> 16)) % d;
+                rem = ((rem << 16) | (mag_[i] & 0xffffu)) % d;
+                // Reassemble: the above splits the 32-bit limb into halves.
+            }
+            return rem;
+        }
+
+
         std::string to_string() const
         {
             if (mag_.empty()) return "0";
@@ -336,8 +354,10 @@ namespace nam
             return r;
         }
 
-        // Schoolbook long division on magnitudes; quotient returned,
-        // remainder written to rem.
+        // Long division on magnitudes; quotient returned, remainder written
+        // to rem. Uses a fast single-limb path (Knuth Algorithm S-style
+        // short division) when the divisor is one limb, falling back to
+        // bit-at-a-time restoring division otherwise.
         static std::vector<uint32_t> divmod_mag(
             const std::vector<uint32_t>& a, const std::vector<uint32_t>& b,
             std::vector<uint32_t>& rem)
@@ -347,6 +367,22 @@ namespace nam
             {
                 rem = a;
                 return {};
+            }
+            // Fast path: single-limb divisor -> short division, O(n).
+            if (b.size() == 1)
+            {
+                uint64_t d = b[0];
+                std::vector<uint32_t> q(a.size(), 0);
+                uint64_t r = 0;
+                for (size_t i = a.size(); i-- > 0;)
+                {
+                    uint64_t cur = (r << 32) | a[i];
+                    q[i] = static_cast<uint32_t>(cur / d);
+                    r = cur % d;
+                }
+                while (!q.empty() && q.back() == 0) q.pop_back();
+                if (r != 0) rem.push_back(static_cast<uint32_t>(r));
+                return q;
             }
             // Bit-at-a-time restoring division. Adequate for Phase 2 sizes.
             std::vector<uint32_t> q(a.size(), 0);

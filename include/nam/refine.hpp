@@ -143,6 +143,19 @@ namespace nam
         }
         return out;
     }
+
+    // Eagerly pre-converge the underlying series so the per-digit refinement
+    // loop in next_digit() rarely has to step terms. Useful when the caller
+    // knows up front how many digits it wants; this front-loads the BigInt
+    // growth once instead of amortizing it across many small refinements.
+    inline std::vector<uint32_t> extract_digits_eager(DigitExtractor ex, int n)
+    {
+        // Converge to a comfortable margin (a few guard digits) before
+        // committing, so boundary stalls are minimized.
+        ex.vm.converge_to_digits(n + ex.consumed + 4);
+        ex.sync_interval();
+        return extract_digits(std::move(ex), n);
+    }
 } // namespace nam
 
 #endif // NAM_REFINE_HPP

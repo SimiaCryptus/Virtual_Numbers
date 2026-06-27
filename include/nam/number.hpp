@@ -136,6 +136,13 @@ namespace nam
             return series(make_one_over_e(base));
         }
 
+        // pi/4 (fractional value in [0,1) = 0.7853981...).
+        static Number pi_quarter(uint32_t base = 10)
+        {
+            return series(make_pi_quarter(base));
+        }
+
+
         static Number series(SeriesVM vm)
         {
             Number n;

@@ -59,6 +59,12 @@ def test_render():
     check(nam.rational(1, 4, 10).to_string(4) == "0.2500", "render 1/4")
 
 
+def test_pi_quarter():
+    n = nam.pi_quarter(10)
+    check(n.digits(6) == [7, 8, 5, 3, 9, 8], "pi/4 digits")
+    check(n.fork_cost() == "O(log n)", "pi/4 series fork cost")
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failures = 0

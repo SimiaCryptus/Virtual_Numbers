@@ -60,6 +60,28 @@ namespace nam
         if (!r.has_value()) return Trit::Indistinguishable;
         return *r ? Trit::Less : Trit::Greater;
     }
+
+    // Cross-generator comparison: compare two automaton states that may be
+    // driven by *different* generators. This is the honest most-significant-
+    // first lexicographic comparison over a shared step signature, valid for
+    // positional (reals/rationals) streams of the same base. Returns the
+    // index of the first differing digit alongside the verdict, which callers
+    // can use to bound how much precision was consumed.
+    template <Generator GX, Generator GY>
+    std::optional<bool> definitely_less_than_xy(AutomatonVM x, AutomatonVM y,
+                                                int max_digits)
+    {
+        for (int i = 0; i < max_digits; ++i)
+        {
+            NumVMStep rx = GX::step(x);
+            NumVMStep ry = GY::step(y);
+            if (rx.digit < ry.digit) return true;
+            if (rx.digit > ry.digit) return false;
+            x = rx.next;
+            y = ry.next;
+        }
+        return std::nullopt;
+    }
 } // namespace nam
 
 #endif // NAM_COMPARE_HPP

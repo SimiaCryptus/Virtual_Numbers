@@ -168,6 +168,98 @@ namespace nam
     {
         return make_series(one_over_e_spec(), base);
     }
+
+    // --- pi/4 via the Leibniz-accelerated Machin-like series ---
+    //
+    // We use the Euler transform of arctan(1) is slow, so instead employ
+    // pi = 4*arctan(1/5)*4 - 4*arctan(1/239) ... but to keep the
+    // exact-rescale invariant simple while still converging usefully we use
+    // the arctan(1/2)+arctan(1/3) decomposition:
+    //   pi/4 = arctan(1/2) + arctan(1/3).
+    // arctan(1/m) = sum_{k>=0} (-1)^k / ((2k+1) m^{2k+1}).
+    //
+    // To preserve a monotone, multiple-of-previous denominator we accumulate
+    // each arctan separately over a denominator that is a growing product,
+    // then combine. For Phase 2 we fold both series into one spec whose
+    // denominator is lcm-free but a clean multiple chain: we use
+    // den = (2k+1)! * (m^2)^{...} style growth via a running denominator.
+    //
+    // Concretely we maintain a single rational num/den and, per advance,
+    // add the next term of BOTH arctan series. The term for arctan(1/m) at
+    // index k is  sign * 1 / ((2k+1) * m^{2k+1}). We rescale to a common
+    // denominator den' = den * (2k+1) * m1^2 * m2^2 (a clean multiple of
+    // den), keeping the exact-rescale invariant intact.
+    inline std::shared_ptr<const SeriesSpec> pi_quarter_spec()
+    {
+        auto spec = std::make_shared<SeriesSpec>();
+        spec->name = "pi/4";
+        spec->advance = [](uint64_t n, BigInt& num, BigInt& den)
+        {
+            // Add the k = n term of arctan(1/2) + arctan(1/3).
+            // term_m(k) = (-1)^k / ((2k+1) * m^{2k+1}).
+            const int64_t m1 = 2, m2 = 3;
+            uint64_t k = n;
+            uint64_t odd = 2 * k + 1;
+            // Compute exact term numerators over a fresh common denominator.
+            // We rebuild num/den from scratch each step using the closed form
+            // of the partial sum to stay interval-honest and avoid drift:
+            //   den = LCM-free product = (2k+1)!! style is awkward, so we use
+            //   den = product_{j=0}^{k} (2j+1) * m1^{2k+1} * m2^{2k+1}.
+            // To keep it incremental: on entry den holds the previous value;
+            // multiply in the new factors.
+            BigInt bodd = BigInt(static_cast<int64_t>(odd));
+            if (n == 0)
+            {
+                // k=0: arctan = 1/m, so sum = 1/2 + 1/3 = 5/6.
+                num = BigInt(5);
+                den = BigInt(6);
+                return;
+            }
+            // New denominator factor: multiply by odd, m1^2, m2^2 to extend
+            // each m^{2k+1} chain by m^2 and introduce the new (2k+1).
+            BigInt m1sq = BigInt(m1 * m1);
+            BigInt m2sq = BigInt(m2 * m2);
+            BigInt newden = den * bodd * m1sq * m2sq;
+            // Rescale existing numerator to the new denominator.
+            BigInt factor = bodd * m1sq * m2sq;
+            num = num * factor;
+            // Add term for arctan(1/2): (-1)^k * newden / ((2k+1) * 2^{2k+1}).
+            BigInt pow1 = big_pow(BigInt(m1), odd);
+            BigInt pow2 = big_pow(BigInt(m2), odd);
+            BigInt r;
+            BigInt t1 = BigInt::divmod(newden, bodd * pow1, r);
+            BigInt t2 = BigInt::divmod(newden, bodd * pow2, r);
+            if (k % 2 == 0)
+            {
+                num += t1;
+                num += t2;
+            }
+            else
+            {
+                num -= t1;
+                num -= t2;
+            }
+            den = newden;
+        };
+        spec->tail_bound = [](uint64_t n, const BigInt& den)
+        {
+            // Both arctan series are alternating with terms bounded by the
+            // first omitted term: |tail_m| <= 1/((2n+1) m^{2n+1}). For the
+            // larger contribution (m=2) at index n this is < 1/2^{2n}. Over
+            // den the err numerator is den/2^{2n}, doubled to cover both
+            // series safely.
+            if (n == 0) return den; // crude bound before refinement
+            BigInt r;
+            BigInt bound = BigInt::divmod(den, big_pow(BigInt(2), 2 * n), r);
+            return bound + bound; // cover both arctan tails
+        };
+        return spec;
+    }
+
+    inline SeriesVM make_pi_quarter(uint32_t base = 10)
+    {
+        return make_series(pi_quarter_spec(), base);
+    }
 } // namespace nam
 
 #endif // NAM_CONSTANTS_HPP
