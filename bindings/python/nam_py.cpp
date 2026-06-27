@@ -139,8 +139,8 @@ PYBIND11_MODULE(nam, m)
                     "Series-tier 1/e.")
         .def_static("pi_quarter", &Number::pi_quarter, py::arg("base") = 10,
                     "Series-tier pi/4 (fractional value 0.7853...).");
-        number.def_static("catalan", &Number::catalan, py::arg("base") = 10,
-                          "Series-tier Catalan's constant (0.9159...).");
+    number.def_static("catalan", &Number::catalan, py::arg("base") = 10,
+                      "Series-tier Catalan's constant (0.9159...).");
 
     // ----- Introspection -----
     number

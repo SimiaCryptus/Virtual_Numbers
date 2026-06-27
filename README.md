@@ -249,7 +249,6 @@ context (restored even if `fn` throws).
 
 ---
 
-
 ## Debugging a hang
 
 `ctest` buffers a test's stdout and only prints it **after** the test
@@ -416,7 +415,6 @@ These hold across every tier and language binding.
   function pointer rather than corrupting any ABI field.
 - Both the interpreter and LLVM backends **reproduce the static digit stream
   exactly** — verified digit-for-digit in the Phase 4 tests.
-
 
 ## Dependency: Emscripten
 

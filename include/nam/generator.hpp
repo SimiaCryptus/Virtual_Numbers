@@ -50,6 +50,7 @@ namespace nam
             s = r.next;
         }
     }
+
     // Emit digits while a predicate holds, up to a hard cap `max_n` to keep
     // the loop total over potentially-infinite streams. Returns the number of
     // digits emitted. `pred(digit, index)` decides whether to continue.
@@ -66,6 +67,7 @@ namespace nam
         }
         return i;
     }
+
     // Advance the generator `n` steps without emitting, returning the final
     // state. O(n); periodic generators should prefer skip.hpp fast paths.
     template <Generator G>

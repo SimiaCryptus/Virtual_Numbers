@@ -58,7 +58,7 @@ endif ()
 # the core library still builds with zero external dependencies.
 option(NAM_BUILD_PYTHON "Build the pybind11 Python bindings" OFF)
 if (NAM_BUILD_PYTHON)
-     add_subdirectory(bindings/python)
+    add_subdirectory(bindings/python)
 endif ()
 # Phase 3 (WASM target): the ergonomic user layer compiled to WebAssembly via
 # Emscripten + embind. Off by default so the core still builds with no
@@ -68,10 +68,8 @@ endif ()
 #   node build-wasm/bindings/wasm/test_nam_wasm.js
 option(NAM_BUILD_WASM "Build the Emscripten/embind WebAssembly bindings" OFF)
 if (NAM_BUILD_WASM)
-     add_subdirectory(bindings/wasm)
+    add_subdirectory(bindings/wasm)
 endif ()
-
-
 
 
 enable_testing()

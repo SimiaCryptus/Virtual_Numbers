@@ -141,6 +141,7 @@ namespace nam
         {
             return series(make_pi_quarter(base));
         }
+
         // Catalan's constant G = 0.9159655941...
         static Number catalan(uint32_t base = 10)
         {
@@ -163,6 +164,7 @@ namespace nam
         {
             return tier_ == Tier::Automaton ? vm_.base : series_.base;
         }
+
         // Series-tier complexity probe: live accumulator bit-width (memory IS
         // the metric). Returns 0 for the automaton tier (constant state).
         int accumulator_bitwidth() const
@@ -170,6 +172,7 @@ namespace nam
             if (tier_ == Tier::Series) return series_.accumulator_bitwidth();
             return 0;
         }
+
         // Generator-family tag for the automaton tier (informational).
         Gen gen() const { return gen_; }
 
@@ -312,6 +315,7 @@ namespace nam
         {
             return digits(PrecisionContext::digits());
         }
+
         // ----- Digit statistics (analysis convenience) -----
         // Returns a frequency histogram over the first `n` emitted digits.
         // histogram[d] is the count of digit value d. The vector length is

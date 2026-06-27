@@ -165,9 +165,11 @@ monotone refinement process that commits digits as the interval collapses.
 This is essentially interval arithmetic combined with online digit extraction, a technique with substantial prior art
 dating to the 1980s. Combined with signed-digit representation, it provides a complete streaming arithmetic layer for
 the reals — with the documented caveat that exact-boundary inputs (e.g., a result that is provably exactly `0.5` in base
+
 10) may not commit a leading digit in finite time. This is not a defect of the implementation but a structural property
-of real-number computation, and the API must expose it honestly via interval-based predicates (`definitely_less_than`,
-`agrees_with(digits=N)`) rather than pretending exact equality is decidable.
+    of real-number computation, and the API must expose it honestly via interval-based predicates (
+    `definitely_less_than`,
+    `agrees_with(digits=N)`) rather than pretending exact equality is decidable.
 
 ### Valuation Extractor (for p-adics)
 

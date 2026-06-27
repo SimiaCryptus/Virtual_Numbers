@@ -135,18 +135,19 @@ namespace
         return std::string("<nam.Number base=") +
             std::to_string(n.base()) + " " + n.fork_cost() + ">";
     }
-   // fork_cost() returns a const char*; embind cannot implicitly bind raw
-   // pointers, so marshal it across the boundary as a std::string.
-   std::string number_fork_cost(const Number& n)
-   {
-       return std::string(n.fork_cost());
-   }
+
+    // fork_cost() returns a const char*; embind cannot implicitly bind raw
+    // pointers, so marshal it across the boundary as a std::string.
+    std::string number_fork_cost(const Number& n)
+    {
+        return std::string(n.fork_cost());
+    }
 
 
     int current_precision() { return PrecisionContext::digits(); }
 } // namespace
 
-EMSCRIPTEN_BINDINGS(nam_module)
+EMSCRIPTEN_BINDINGS (nam_module)
 {
     // ---- digit vector <-> JS array ----
     register_vector<uint32_t>("DigitVector");
@@ -163,7 +164,7 @@ EMSCRIPTEN_BINDINGS(nam_module)
     class_<Number>("Number")
         // Introspection.
         .function("base", &Number::base)
-       .function("fork_cost", &number_fork_cost)
+        .function("fork_cost", &number_fork_cost)
         // Codec: base as projection.
         .function("in_base", &Number::in_base)
         // Memoization policy (explicit).
@@ -187,7 +188,7 @@ EMSCRIPTEN_BINDINGS(nam_module)
 
     // ---- Ergonomic constructors (mpmath-flavoured free functions) ----
     function("rational", &Number::rational);
-    function("sqrt", select_overload<Number(uint64_t, uint32_t)>(&nam::sqrt));
+    function("sqrt", select_overload < Number(uint64_t, uint32_t) > (&nam::sqrt));
     function("padic", &Number::padic);
     function("e", &Number::e);
     function("ln2", &Number::ln2);

@@ -14,9 +14,9 @@
 # we emit a clear diagnostic so misconfiguration fails fast.
 if (NOT EMSCRIPTEN)
     message(FATAL_ERROR
-        "NAM_BUILD_WASM=ON requires the Emscripten toolchain. Configure with "
-        "-DCMAKE_TOOLCHAIN_FILE=<emsdk>/upstream/emscripten/cmake/Modules/"
-        "Platform/Emscripten.cmake")
+            "NAM_BUILD_WASM=ON requires the Emscripten toolchain. Configure with "
+            "-DCMAKE_TOOLCHAIN_FILE=<emsdk>/upstream/emscripten/cmake/Modules/"
+            "Platform/Emscripten.cmake")
 endif ()
 
 add_executable(nam_wasm nam_wasm.cpp)
@@ -33,9 +33,9 @@ target_link_options(nam_wasm PRIVATE
         "--bind"
         "-sMODULARIZE=1"
         "-sEXPORT_NAME=createNam"
-         "-sEXPORT_ES6=1"
+        "-sEXPORT_ES6=1"
         "-sALLOW_MEMORY_GROWTH=1"
-         "-sENVIRONMENT=node,web")
+        "-sENVIRONMENT=node,web")
 set_target_properties(nam_wasm PROPERTIES OUTPUT_NAME "nam_wasm")
 
 # Copy the ergonomic JS wrapper, example, and smoke test next to the built

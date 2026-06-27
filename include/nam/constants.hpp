@@ -260,6 +260,7 @@ namespace nam
     {
         return make_series(pi_quarter_spec(), base);
     }
+
     // --- Catalan's constant G = sum_{k>=0} (-1)^k / (2k+1)^2 ---
     //
     // G = 0.9159655941...  This is a slowly-converging alternating series
@@ -341,6 +342,7 @@ namespace nam
         };
         return spec;
     }
+
     inline SeriesVM make_catalan(uint32_t base = 10)
     {
         return make_series(catalan_spec(), base);
