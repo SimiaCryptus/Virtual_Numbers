@@ -233,7 +233,7 @@ namespace nam {
                     break;
                 }
             }
-            return json::Value(std::move(o));
+            return {std::move(o)};
         }
 
         [[nodiscard]] std::string to_json_string() const {
@@ -490,7 +490,7 @@ namespace nam {
             Number a = *this, b = other;
             for (int i = 0; i < digits; ++i) {
                 auto da = a.next_digit();
-                [[nodiscard]] auto db = b.next_digit();
+                auto db = b.next_digit();
                 if (!da.has_value() || !db.has_value()) return false;
                 if (*da != *db) return false;
             }
@@ -501,7 +501,7 @@ namespace nam {
         // Valid for MSB-first positional streams (rationals/reals), NOT for
         // LSB-up p-adics -- mirrors compare.hpp's documented restriction.
         [[nodiscard]] std::optional<bool> definitely_less_than(const Number &other,
-                                                 const int max_digits) const {
+                                                               const int max_digits) const {
             Number a = *this, b = other;
             for (int i = 0; i < max_digits; ++i) {
                 auto da = a.next_digit();

@@ -227,7 +227,7 @@ NAM_TEST(padic_one_third_in_z5) {
     long long val = 0, pk = 1;
     for (int k = 0; k < 8; ++k) {
         const auto r = PAdic::step(ns, v);
-        val += (long long) r.digit * pk;
+        val += static_cast<long long>(r.digit) * pk;
         pk *= 5;
         CHECK(((3 * val) % pk + pk) % pk == 1 % pk);
         v = r.next;
@@ -326,7 +326,7 @@ NAM_TEST(mat_pow_modexp_kernel) {
     // (large modulus) equals F(11)=89; check the standard identity
     // [[F(n+1),F(n)],[F(n),F(n-1)]].
     const Mat2 fib{1, 1, 1, 0};
-    const Mat2 p = mat_pow(fib, 10, (uint64_t) 1e18);
+    const Mat2 p = mat_pow(fib, 10, static_cast<uint64_t>(1e18));
     CHECK(p.b == 55); // F(10)
     CHECK(p.a == 89); // F(11)
     CHECK(p.d == 34); // F(9)

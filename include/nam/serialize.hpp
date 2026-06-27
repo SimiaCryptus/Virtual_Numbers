@@ -44,7 +44,7 @@ namespace nam {
         o["direction"] = json::Value(
             ns.direction == Direction::RL ? "RL" : "LR");
         o["scale"] = json::Value(static_cast<int64_t>(ns.scale));
-        return json::Value(std::move(o));
+        return {std::move(o)};
     }
 
     inline NumberSpace number_space_from_json(const json::Value &v) {
@@ -64,11 +64,11 @@ namespace nam {
         json::Object o;
         json::Array limbs;
         for (const uint32_t l: n.limbs())
-            limbs.push_back(json::Value(static_cast<int64_t>(l)));
+            limbs.emplace_back(static_cast<int64_t>(l));
         o["limbs"] = json::Value(std::move(limbs));
         o["neg"] = json::Value(n.sign());
         o["dec"] = json::Value(n.to_string()); // human-readable mirror
-        return json::Value(std::move(o));
+        return {std::move(o)};
     }
 
     inline BigInt big_int_from_json(const json::Value &v) {
@@ -91,7 +91,7 @@ namespace nam {
         o["r"] = json::Value(static_cast<int64_t>(s.r));
         o["q"] = json::Value(static_cast<int64_t>(s.q));
         o["p"] = json::Value(static_cast<int64_t>(s.p));
-        return json::Value(std::move(o));
+        return {std::move(o)};
     }
 
     inline Rational::State rational_state_from_json(const json::Value &v) {
@@ -109,7 +109,7 @@ namespace nam {
         o["R_hi"] = json::Value(static_cast<int64_t>(s.R.hi));
         o["P"] = json::Value(static_cast<int64_t>(s.P));
         o["D"] = json::Value(static_cast<int64_t>(s.D));
-        return json::Value(std::move(o));
+        return {std::move(o)};
     }
 
     inline Sqrt::State sqrt_state_from_json(const json::Value &v) {
@@ -126,7 +126,7 @@ namespace nam {
         json::Object o;
         o["a"] = json::Value(s.a);
         o["b"] = json::Value(s.b);
-        return json::Value(std::move(o));
+        return {std::move(o)};
     }
 
     inline PAdic::State padic_state_from_json(const json::Value &v) {
@@ -220,7 +220,7 @@ namespace nam {
                 o["seed"] = to_json(std::get<PAdic::State>(c.seed));
                 break;
         }
-        return json::Value(std::move(o));
+        return {std::move(o)};
     }
 
     inline SeedConfig seed_config_from_json(const json::Value &v) {
@@ -330,7 +330,7 @@ namespace nam {
                     o["state"] = nam::to_json(std::get<PAdic::State>(state_));
                     break;
             }
-            return json::Value(std::move(o));
+            return {std::move(o)};
         }
 
         [[nodiscard]] std::string to_json_string() const {
@@ -436,7 +436,7 @@ namespace nam {
             vm.spec ? vm.spec->name : "series");
         o["num"] = to_json(vm.num);
         o["den"] = to_json(vm.den);
-        return json::Value(std::move(o));
+        return {std::move(o)};
     }
 
     // Rebind a deserialized SeriesVM onto a caller-supplied spec. The spec

@@ -28,6 +28,7 @@ namespace nam::json {
 
     struct Value {
         enum class Type { Null, Bool, Int, Str, Arr, Obj };
+
         Type type = Type::Null;
         bool b = false;
         int64_t i = 0;
@@ -36,15 +37,33 @@ namespace nam::json {
         Object obj;
 
         Value() = default;
-        Value(const bool v) : type(Type::Bool), b(v) {}
-        Value(const int64_t v) : type(Type::Int), i(v) {}
-        Value(const int v) : type(Type::Int), i(v) {}
-        Value(const uint32_t v) : type(Type::Int), i(static_cast<int64_t>(v)) {}
-        Value(const uint64_t v) : type(Type::Int), i(static_cast<int64_t>(v)) {}
-        Value(const char *v) : type(Type::Str), s(v) {}
-        Value(std::string v) : type(Type::Str), s(std::move(v)) {}
-        Value(Array v) : type(Type::Arr), arr(std::move(v)) {}
-        Value(Object v) : type(Type::Obj), obj(std::move(v)) {}
+
+        Value(const bool v) : type(Type::Bool), b(v) {
+        }
+
+        Value(const int64_t v) : type(Type::Int), i(v) {
+        }
+
+        Value(const int v) : type(Type::Int), i(v) {
+        }
+
+        Value(const uint32_t v) : type(Type::Int), i(static_cast<int64_t>(v)) {
+        }
+
+        Value(const uint64_t v) : type(Type::Int), i(static_cast<int64_t>(v)) {
+        }
+
+        Value(const char *v) : type(Type::Str), s(v) {
+        }
+
+        Value(std::string v) : type(Type::Str), s(std::move(v)) {
+        }
+
+        Value(Array v) : type(Type::Arr), arr(std::move(v)) {
+        }
+
+        Value(Object v) : type(Type::Obj), obj(std::move(v)) {
+        }
 
         // Typed accessors (throw on type mismatch -- honest failure).
         [[nodiscard]] [[nodiscard]] [[nodiscard]] const Value &at(const std::string &k) const {
@@ -52,7 +71,7 @@ namespace nam::json {
             const auto it = obj.find(k);
             if (it == obj.end()) throw std::runtime_error("json: missing key " + k);
             return it->second;
-      }
+        }
 
         [[nodiscard]] bool has(const std::string &k) const {
             return type == Type::Obj && obj.count(k) > 0;
@@ -79,11 +98,16 @@ namespace nam::json {
         out.push_back('"');
         for (const char c: s) {
             switch (c) {
-                case '"': out += "\\\""; break;
-                case '\\': out += "\\\\"; break;
-                case '\n': out += "\\n"; break;
-                case '\t': out += "\\t"; break;
-                case '\r': out += "\\r"; break;
+                case '"': out += "\\\"";
+                    break;
+                case '\\': out += "\\\\";
+                    break;
+                case '\n': out += "\\n";
+                    break;
+                case '\t': out += "\\t";
+                    break;
+                case '\r': out += "\\r";
+                    break;
                 default: out.push_back(c);
             }
         }
@@ -92,10 +116,14 @@ namespace nam::json {
 
     inline void dump(const Value &v, std::string &out) {
         switch (v.type) {
-            case Value::Type::Null: out += "null"; break;
-            case Value::Type::Bool: out += v.b ? "true" : "false"; break;
-            case Value::Type::Int: out += std::to_string(v.i); break;
-            case Value::Type::Str: dump_string(v.s, out); break;
+            case Value::Type::Null: out += "null";
+                break;
+            case Value::Type::Bool: out += v.b ? "true" : "false";
+                break;
+            case Value::Type::Int: out += std::to_string(v.i);
+                break;
+            case Value::Type::Str: dump_string(v.s, out);
+                break;
             case Value::Type::Arr: {
                 out.push_back('[');
                 for (size_t k = 0; k < v.arr.size(); ++k) {
@@ -130,7 +158,8 @@ namespace nam::json {
     // ---- Parsing ----
     class Parser {
     public:
-        explicit Parser(const std::string &src) : s_(src) {}
+        explicit Parser(const std::string &src) : s_(src) {
+        }
 
         Value parse() {
             skip_ws();
@@ -145,7 +174,7 @@ namespace nam::json {
 
         void skip_ws() {
             while (p_ < s_.size() && (s_[p_] == ' ' || s_[p_] == '\n' ||
-                    s_[p_] == '\t' || s_[p_] == '\r'))
+                                      s_[p_] == '\t' || s_[p_] == '\r'))
                 ++p_;
         }
 
@@ -162,11 +191,11 @@ namespace nam::json {
             const char c = peek();
             if (c == '{') return parse_object();
             if (c == '[') return parse_array();
-            if (c == '"') return Value(parse_string());
+            if (c == '"') return {parse_string()};
             if (c == 't' || c == 'f') return parse_bool();
             if (c == 'n') {
                 p_ += 4; // null
-                return Value();
+                return {};
             }
             return parse_int();
         }
@@ -177,7 +206,7 @@ namespace nam::json {
             skip_ws();
             if (peek() == '}') {
                 get();
-                return Value(std::move(o));
+                return {std::move(o)};
             }
             for (;;) {
                 skip_ws();
@@ -191,7 +220,7 @@ namespace nam::json {
                 if (c == '}') break;
                 if (c != ',') throw std::runtime_error("json: expected , or }");
             }
-            return Value(std::move(o));
+            return {std::move(o)};
         }
 
         Value parse_array() {
@@ -200,7 +229,7 @@ namespace nam::json {
             skip_ws();
             if (peek() == ']') {
                 get();
-                return Value(std::move(a));
+                return {std::move(a)};
             }
             for (;;) {
                 a.push_back(parse_value());
@@ -209,7 +238,7 @@ namespace nam::json {
                 if (c == ']') break;
                 if (c != ',') throw std::runtime_error("json: expected , or ]");
             }
-            return Value(std::move(a));
+            return {std::move(a)};
         }
 
         std::string parse_string() {
@@ -222,11 +251,16 @@ namespace nam::json {
                 if (c == '\\') {
                     const char e = get();
                     switch (e) {
-                        case '"': out.push_back('"'); break;
-                        case '\\': out.push_back('\\'); break;
-                        case 'n': out.push_back('\n'); break;
-                        case 't': out.push_back('\t'); break;
-                        case 'r': out.push_back('\r'); break;
+                        case '"': out.push_back('"');
+                            break;
+                        case '\\': out.push_back('\\');
+                            break;
+                        case 'n': out.push_back('\n');
+                            break;
+                        case 't': out.push_back('\t');
+                            break;
+                        case 'r': out.push_back('\r');
+                            break;
                         default: out.push_back(e);
                     }
                 } else {

@@ -37,13 +37,13 @@ namespace nam {
             BigInt b;
             if (v != 0) {
                 b.mag_.push_back(static_cast<uint32_t>(v & 0xffffffffu));
-                const uint32_t hi = static_cast<uint32_t>(v >> 32);
+                const auto hi = static_cast<uint32_t>(v >> 32);
                 if (hi) b.mag_.push_back(hi);
             }
             return b;
         }
 
-        [[nodiscard]] bool is_zero() const { return mag_.empty (); }
+        [[nodiscard]] bool is_zero() const { return mag_.empty(); }
         [[nodiscard]] bool negative() const { return negative_; }
 
         // Bit-width of the[[nodiscard]]  magnitude (complexity-metri[[nodiscard]] c instrumentation).
@@ -174,7 +174,7 @@ namespace nam {
             for (size_t i = mag_.size(); i-- > 0;) {
                 v = (v << 32) | mag_[i];
             }
-            const int64_t s = static_cast<int64_t>(v);
+            const auto s = static_cast<int64_t>(v);
             return negative_ ? -s : s;
         }
 
@@ -264,10 +264,10 @@ namespace nam {
             negative_ = v < 0;
             const uint64_t u = negative_
                                    ? static_cast<uint64_t>(-(v + 1)) + 1
-                             : static_cast<uint64_t>(v);
+                                   : static_cast<uint64_t>(v);
             if (u) {
                 mag_.push_back(static_cast<uint32_t>(u & 0xffffffffu));
-                const uint32_t hi = static_cast<uint32_t>(u >> 32);
+                const auto hi = static_cast<uint32_t>(u >> 32);
                 if (hi) mag_.push_back(hi);
             }
             if (mag_.empty()) negative_ = false;
@@ -313,7 +313,7 @@ namespace nam {
                 int64_t s = static_cast<int64_t>(a[i]) - borrow;
                 if (i < b.size()) s -= b[i];
                 if (s < 0) {
-                    s += (int64_t(1) << 32);
+                    s += (static_cast<int64_t>(1) << 32);
                     borrow = 1;
                 } else borrow = 0;
                 r.push_back(static_cast<uint32_t>(s));
@@ -399,9 +399,9 @@ namespace nam {
 
         static void shl1(std::vector<uint32_t> &v) {
             uint32_t carry = 0;
-            for (size_t i = 0; i < v.size(); ++i) {
-                const uint32_t next = (v[i] >> 31) & 1u;
-                v[i] = (v[i] << 1) | carry;
+            for (unsigned int &i: v) {
+                const uint32_t next = (i >> 31) & 1u;
+                i = (i << 1) | carry;
                 carry = next;
             }
             if (carry) v.push_back(carry);

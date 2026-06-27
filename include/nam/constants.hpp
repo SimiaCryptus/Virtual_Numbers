@@ -278,7 +278,7 @@ namespace nam {
                 std::fprintf(stderr,
                              "[catalan.advance] n=%llu odd=%llu sign=%c "
                              "num.bits=%d den.bits=%d\n",
-                             (unsigned long long) n, (unsigned long long) odd,
+                             static_cast<unsigned long long>(n), static_cast<unsigned long long>(odd),
                              (n % 2 == 0) ? '+' : '-',
                              num.bit_width(), den.bit_width());
         };
@@ -326,7 +326,7 @@ namespace nam {
                 std::fprintf(stderr,
                              "[catalan.tail] n=%llu odd=%llu bound.bits=%d "
                              "den.bits=%d returning 2*bound\n",
-                             (unsigned long long) n, (unsigned long long) odd,
+                             static_cast<unsigned long long>(n), static_cast<unsigned long long>(odd),
                              bound.bit_width(), den.bit_width());
             return bound + bound;
         };
